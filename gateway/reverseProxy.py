@@ -14,7 +14,7 @@ from chatgpt.fp import get_fp
 from utils.Client import Client
 from utils.Logger import logger
 from utils.configs import chatgpt_base_url_list, sentinel_proxy_url_list, force_no_history, file_host, voice_host, accept_language
-from utils.token_parser import mask_token
+from utils.token_parser import is_refresh_token, mask_token
 
 
 def generate_current_time():
@@ -94,7 +94,7 @@ headers_accept_list = [
 
 async def get_real_req_token(token):
     req_token = get_req_token(token)
-    if len(req_token) == 45 or req_token.startswith("eyJhbGciOi"):
+    if is_refresh_token(req_token) or req_token.startswith("eyJhbGciOi"):
         return req_token
     else:
         req_token = get_req_token("", token)

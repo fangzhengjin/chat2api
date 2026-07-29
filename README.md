@@ -34,7 +34,7 @@ curl -fsSL https://raw.githubusercontent.com/fangzhengjin/chat2api/next/deploy/i
 | 📝 **系统日志 UI** | 实时轮询 / 级别筛选 / 关键字搜索 / 一键下载 | [FEATURES#4](docs/FEATURES.md#4-系统日志-ui) |
 | 🔐 **安全加固** | IP 白名单 / HttpOnly / CSRF / 密码隔离 / CF 指引 | [SECURITY](docs/SECURITY.md) |
 | 🔄 **UI 代理热加载** | 添加/删除代理即时生效，不需重启 | [FEATURES#3](docs/FEATURES.md#3-管理后台增强) |
-| 🎯 **新版 Token 识别** | 支持 `rt_*` 新格式 + `sess-*` SessionToken + chat_refresh 现代化 | [FEATURES#6](docs/FEATURES.md#6-新版-token-支持) |
+| 🎯 **新版 Token 识别** | 支持 `rt` 前缀格式 + `sess-*` SessionToken + chat_refresh 现代化 | [FEATURES#6](docs/FEATURES.md#6-新版-token-支持) |
 | 🧩 **一容器一账号编排** | `deploy/multi/` 提供生成器 + nginx 路径分发 + orchestrator 面板，N 个账号 = N 个隔离容器 | [部署：多实例](#多实例一容器一账号) |
 | 🔗 **LibreChat 会话续接** | request body 携带 `librechat_conversation_id` 即可让同窗口在 ChatGPT 端续会话（节省 token + 用上账号原生记忆） | [LibreChat 集成](#librechat--new-api-集成) |
 
@@ -223,7 +223,7 @@ chat2api migrate rollback ~/chat2api.backup-YYYYMMDD-HHMMSS
 - 流式 / 非流式响应
 - 模型支持：免登录 `GPT-3.5`、`GPT-4 / 4o / 4o-mini`、`GPT-5 / 5-mini / 5-thinking / 5-pro / 5-5`、`o1 / o1-mini / o1-preview / o1-pro`、`o3-mini / o3-mini-high`
 - GPTs（`gpt-4-gizmo-g-*`）/ Team / Plus 账号 / 文件 / 图片 / 联网 / 画图
-- AccessToken / RefreshToken / SessionToken（`rt_*` 新格式）多 Tokens 轮询 + 失败自动重试
+- AccessToken / RefreshToken / SessionToken（支持所有 `rt` 前缀格式）多 Tokens 轮询 + 失败自动重试
 - O3 / O1 系列推理过程输出
 - conversation_id / parent_message_id 续接（用于 [LibreChat 集成](#librechat--new-api-集成)）
 

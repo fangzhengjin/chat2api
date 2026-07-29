@@ -8,6 +8,7 @@ import utils.configs as configs
 import utils.globals as globals
 from chatgpt.refreshToken import rt2ac, sess2ac
 from utils.Logger import logger
+from utils.token_parser import is_refresh_token
 
 
 def get_req_token(req_token, seed=None):
@@ -63,8 +64,7 @@ async def verify_token(req_token):
                 return access_token
             except HTTPException as e:
                 raise HTTPException(status_code=e.status_code, detail=e.detail)
-        # 识别 RefreshToken：老版 45 字符 或 新版 Auth0 'rt_' 前缀（长度 ≥ 60）
-        elif (req_token.startswith("rt_") and len(req_token) >= 60) or len(req_token) == 45:
+        elif is_refresh_token(req_token):
             try:
                 if req_token in globals.error_token_list:
                     raise HTTPException(status_code=401, detail="Error RefreshToken")
@@ -83,7 +83,7 @@ async def refresh_all_tokens(force_refresh=False):
             if token.startswith("sess-"):
                 await asyncio.sleep(0.5)
                 await sess2ac(token, force_refresh=force_refresh)
-            elif (token.startswith("rt_") and len(token) >= 60) or len(token) == 45:
+            elif is_refresh_token(token):
                 await asyncio.sleep(0.5)
                 await rt2ac(token, force_refresh=force_refresh)
         except HTTPException:

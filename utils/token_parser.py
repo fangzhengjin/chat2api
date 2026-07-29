@@ -4,7 +4,7 @@
 
 识别规则（与 utils/routing.detect_token_type 一致）：
   - AccessToken: 以 'eyJhbGciOi' 或 'fk-' 开头
-  - RefreshToken: 长度恰好 45 字符
+  - RefreshToken: 以 'rt' 开头，或老版固定 45 字符
   - 其他：归为 unknown
 
 返回结构 ParseResult:
@@ -34,13 +34,25 @@ _TOKEN_KEY_NAMES = {
 }
 
 
+def is_refresh_token(token: str) -> bool:
+    """判断字符串是否为 RefreshToken。
+
+    Args:
+        token: 待判断的 Token 字符串。
+
+    Returns:
+        Token 以 ``rt`` 开头或符合老版 45 字符格式时返回 ``True``。
+    """
+    return bool(token) and (token.startswith("rt") or len(token) == 45)
+
+
 def _classify(token: str) -> str:
     """返回 'session' | 'access' | 'refresh' | 'unknown'。
 
     与 utils/routing.detect_token_type 规则保持一致：
       - session: 'sess-' 前缀（chatgpt.com 网页 session cookie，带前缀存储）
       - access: 'eyJhbGciOi' / 'fk-' 开头
-      - refresh: 'rt_' 前缀且长度 ≥ 60（新版 Auth0 格式）或 长度 45（老版）
+      - refresh: 'rt' 前缀（新版格式）或长度 45（老版）
     """
     if not token:
         return "unknown"
@@ -48,9 +60,7 @@ def _classify(token: str) -> str:
         return "session"
     if token.startswith("eyJhbGciOi") or token.startswith("fk-"):
         return "access"
-    if token.startswith("rt_") and len(token) >= 60:
-        return "refresh"
-    if len(token) == 45:
+    if is_refresh_token(token):
         return "refresh"
     return "unknown"
 

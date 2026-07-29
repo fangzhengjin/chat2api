@@ -196,7 +196,7 @@ LOG_BUFFER_SIZE: '3000'   # 内存环形缓冲条数，默认 2000
 | 前缀/长度 | 类型 | 刷新机制 |
 |---|---|---|
 | `sess-*` | **SessionToken**（新）| 调 `chatgpt.com/api/auth/session`，8 分钟缓存 |
-| `rt_*`（长度 ≥ 60）| RefreshToken（Auth0 新格式）| 调 `auth.openai.com/oauth/token` |
+| `rt` 开头 | RefreshToken（包括 `rt_`、`rt.1.` 等格式）| 调 `auth.openai.com/oauth/token` |
 | 长度正好 45 | RefreshToken（老格式） | 调 `auth.openai.com/oauth/token` |
 | `eyJhbGciOi*` | AccessToken (JWT) | 不刷新（2 小时后过期） |
 | `fk-*` | AccessToken (fakeopen) | 不刷新 |
@@ -222,7 +222,7 @@ LOG_BUFFER_SIZE: '3000'   # 内存环形缓冲条数，默认 2000
 ```
 请求进来 → verify_token 看 token 前缀
           ├── sess-  → sess2ac() 查缓存 → 命中返回 / 失效重新调 /api/auth/session
-          ├── rt_    → rt2ac() 同上逻辑，调 auth.openai.com
+          ├── rt...  → rt2ac() 同上逻辑，调 auth.openai.com
           └── eyJ    → 直接用
 ```
 

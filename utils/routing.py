@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 import utils.globals as globals
 from utils.Logger import logger
+from utils.token_parser import is_refresh_token
 
 
 def utc_now():
@@ -23,7 +24,7 @@ def detect_token_type(token):
     规则：
       - SessionToken: 以 'sess-' 开头（chatgpt.com 网页 session cookie，带前缀存储）
       - AccessToken: 以 'eyJhbGciOi' 或 'fk-' 开头（JWT / fakeopen token）
-      - RefreshToken: 老版 45 字符；或新版 Auth0 'rt_' 前缀（长度通常 80-100+）
+      - RefreshToken: 以 'rt' 开头，或老版固定 45 字符
       - CustomToken: 其他
     """
     if not token:
@@ -32,10 +33,7 @@ def detect_token_type(token):
         return "SessionToken"
     if token.startswith("eyJhbGciOi") or token.startswith("fk-"):
         return "AccessToken"
-    # 新版 Auth0 RefreshToken: rt_<nonce>.<payload>，长度 ≥ 60 才算有效
-    if token.startswith("rt_") and len(token) >= 60:
-        return "RefreshToken"
-    if len(token) == 45:
+    if is_refresh_token(token):
         return "RefreshToken"
     return "CustomToken"
 

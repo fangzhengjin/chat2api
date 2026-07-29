@@ -20,7 +20,7 @@ from gateway.reverseProxy import chatgpt_reverse_proxy, content_generator, get_r
     headers_accept_list
 from utils.Client import Client
 from utils.Logger import logger
-from utils.token_parser import mask_token
+from utils.token_parser import is_refresh_token, mask_token
 from utils.configs import x_sign, turnstile_solver_url, chatgpt_base_url_list, no_sentinel, sentinel_proxy_url_list, \
     force_no_history
 
@@ -42,7 +42,15 @@ chatgpt_paths = ["c/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-
 
 
 def has_direct_access_token(token: str) -> bool:
-    return len(token) == 45 or token.startswith("eyJhbGciOi")
+    """判断请求是否直接携带可验证的访问或刷新 Token。
+
+    Args:
+        token: 请求头中的 Token 字符串。
+
+    Returns:
+        Token 可直接进入验证流程时返回 ``True``。
+    """
+    return is_refresh_token(token) or token.startswith("eyJhbGciOi")
 
 
 @app.get("/backend-api/accounts/check/v4-2023-04-27")
@@ -139,7 +147,7 @@ async def post_subscriptions(request: Request):
 @app.api_route("/backend-api/conversations", methods=["GET", "PATCH"])
 async def get_conversations(request: Request):
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
-    if len(token) == 45 or token.startswith("eyJhbGciOi"):
+    if has_direct_access_token(token):
         return await chatgpt_reverse_proxy(request, "backend-api/conversations")
     if request.method == "GET":
         limit = int(request.query_params.get("limit", 28))
@@ -173,7 +181,7 @@ async def update_conversation(request: Request, conversation_id: str):
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     conversation_details_response = await chatgpt_reverse_proxy(request,
                                                                 f"backend-api/conversation/{conversation_id}")
-    if len(token) == 45 or token.startswith("eyJhbGciOi"):
+    if has_direct_access_token(token):
         return conversation_details_response
     else:
         conversation_details_str = conversation_details_response.body.decode('utf-8')
@@ -197,7 +205,7 @@ async def update_conversation(request: Request, conversation_id: str):
 async def patch_conversation(request: Request, conversation_id: str):
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     patch_response = (await chatgpt_reverse_proxy(request, f"backend-api/conversation/{conversation_id}"))
-    if len(token) == 45 or token.startswith("eyJhbGciOi"):
+    if has_direct_access_token(token):
         return patch_response
     else:
         data = await request.json()
@@ -218,7 +226,7 @@ async def patch_conversation(request: Request, conversation_id: str):
 @app.get("/backend-api/me")
 async def get_me(request: Request):
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
-    if len(token) == 45 or token.startswith("eyJhbGciOi"):
+    if has_direct_access_token(token):
         return await chatgpt_reverse_proxy(request, "backend-api/me")
     else:
         me = {
@@ -270,7 +278,7 @@ async def get_me(request: Request):
 @app.get("/backend-api/tasks")
 async def get_me(request: Request):
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
-    if len(token) == 45 or token.startswith("eyJhbGciOi"):
+    if has_direct_access_token(token):
         return await chatgpt_reverse_proxy(request, "backend-api/tasks")
     else:
         tasks = {
@@ -283,7 +291,7 @@ async def get_me(request: Request):
 @app.get("/backend-api/user_system_messages")
 async def get_me(request: Request):
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
-    if len(token) == 45 or token.startswith("eyJhbGciOi"):
+    if has_direct_access_token(token):
         return await chatgpt_reverse_proxy(request, "backend-api/user_system_messages")
     else:
         user_system_messages = {
@@ -303,7 +311,7 @@ async def get_me(request: Request):
 @app.get("/backend-api/memories")
 async def get_me(request: Request):
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
-    if len(token) == 45 or token.startswith("eyJhbGciOi"):
+    if has_direct_access_token(token):
         return await chatgpt_reverse_proxy(request, "backend-api/memories")
     else:
         memories = {"memories":[],"memory_max_tokens":10000,"memory_num_tokens":0}
@@ -313,7 +321,7 @@ async def get_me(request: Request):
 # @app.get("/backend-api/system_hints")
 # async def get_me(request: Request):
 #     token = request.headers.get("Authorization", "").replace("Bearer ", "")
-#     if len(token) == 45 or token.startswith("eyJhbGciOi"):
+#     if has_direct_access_token(token):
 #         return await chatgpt_reverse_proxy(request, "backend-api/system_hints")
 #     else:
 #         system_hints = {
