@@ -22,6 +22,7 @@ from utils.routing import (
     update_single_binding,
 )
 import utils.globals as globals
+from chatgpt.authorization import generate_gateway_seed, has_gateway_seed, remove_gateway_seeds
 from chatgpt.refreshToken import rt2ac
 
 ADMIN_COOKIE_NAME = "admin_auth"
@@ -267,6 +268,8 @@ async def routing_admin_page(request: Request):
 async def routing_admin_data(request: Request):
     require_admin_auth(request)
     payload = get_dashboard_payload()
+    for account in payload.get("accounts", []):
+        account["has_chat_password"] = has_gateway_seed(account["token"])
     payload["routing_config"] = get_routing_config()
     payload["proxy_options"] = get_routing_config().get("proxies", [])
     return JSONResponse(payload)
@@ -465,6 +468,7 @@ async def routing_admin_delete_account(request: Request):
         for item in globals.token_list:
             f.write(item + "\n")
 
+    remove_gateway_seeds(token)
     remove_account_binding(token)
     if token in globals.refresh_map:
         globals.refresh_map.pop(token, None)
@@ -482,6 +486,27 @@ async def routing_admin_delete_account(request: Request):
             "message": "账号已删除",
         }
     )
+
+
+async def routing_admin_generate_chat_password(request: Request):
+    """为选定账号生成或重置 Chat 页面访问密码。
+
+    Args:
+        request: 包含账号 token 的管理员请求。
+
+    Returns:
+        仅展示一次的明文访问密码。
+    """
+    require_admin_auth(request)
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+    token = (body.get("token") or "").strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="token is required")
+    password = generate_gateway_seed(token)
+    return JSONResponse({"status": "success", "password": password})
 
 
 async def routing_admin_refresh_account(request: Request):
@@ -1174,6 +1199,7 @@ app.add_api_route("/admin/routing/account-bind", routing_admin_bind_account, met
 app.add_api_route("/admin/routing/accounts/import", routing_admin_import_accounts, methods=["POST"])
 app.add_api_route("/admin/routing/accounts/parse-file", routing_admin_parse_file, methods=["POST"])
 app.add_api_route("/admin/routing/accounts/delete", routing_admin_delete_account, methods=["POST"])
+app.add_api_route("/admin/routing/accounts/chat-password", routing_admin_generate_chat_password, methods=["POST"])
 app.add_api_route("/admin/routing/accounts/refresh", routing_admin_refresh_account, methods=["POST"])
 app.add_api_route("/admin/routing/accounts/refresh-all", routing_admin_refresh_all_accounts, methods=["POST"])
 app.add_api_route("/admin/routing/test-proxy", routing_admin_test_proxy, methods=["POST"])
@@ -1199,6 +1225,7 @@ if api_prefix:
     app.add_api_route(f"/{api_prefix}/admin/routing/accounts/import", routing_admin_import_accounts, methods=["POST"])
     app.add_api_route(f"/{api_prefix}/admin/routing/accounts/parse-file", routing_admin_parse_file, methods=["POST"])
     app.add_api_route(f"/{api_prefix}/admin/routing/accounts/delete", routing_admin_delete_account, methods=["POST"])
+    app.add_api_route(f"/{api_prefix}/admin/routing/accounts/chat-password", routing_admin_generate_chat_password, methods=["POST"])
     app.add_api_route(f"/{api_prefix}/admin/routing/accounts/refresh", routing_admin_refresh_account, methods=["POST"])
     app.add_api_route(f"/{api_prefix}/admin/routing/accounts/refresh-all", routing_admin_refresh_all_accounts, methods=["POST"])
     app.add_api_route(f"/{api_prefix}/admin/routing/test-proxy", routing_admin_test_proxy, methods=["POST"])

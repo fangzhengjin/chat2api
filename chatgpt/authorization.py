@@ -1,6 +1,8 @@
 import asyncio
+import hashlib
 import json
 import random
+import secrets
 
 from fastapi import HTTPException
 
@@ -9,6 +11,116 @@ import utils.globals as globals
 from chatgpt.refreshToken import rt2ac, sess2ac
 from utils.Logger import logger
 from utils.token_parser import is_refresh_token
+
+GATEWAY_COOKIE_NAME = "chat2api_seed"
+
+
+def _gateway_seed_key(seed):
+    return hashlib.sha256(seed.encode("utf-8")).hexdigest()
+
+
+def resolve_gateway_seed_value(seed):
+    """验证 SeedToken 明文并返回内部映射键。
+
+    Args:
+        seed: 用户提交或 Cookie 中保存的 SeedToken 明文。
+
+    Returns:
+        SeedToken 的 SHA-256 映射键。
+
+    Raises:
+        HTTPException: Cookie 缺失、无效或绑定账号不存在时返回 401。
+    """
+    seed_key = _gateway_seed_key(seed) if seed else ""
+    seed_data = globals.seed_map.get(seed_key, {})
+    if not seed_data.get("managed") or seed_data.get("token") not in globals.token_list:
+        raise HTTPException(status_code=401, detail="Invalid chat password")
+    return seed_key
+
+
+def resolve_gateway_seed(request):
+    """验证浏览器 Seed Cookie 并返回内部映射键。
+
+    Args:
+        request: 当前 FastAPI 请求。
+
+    Returns:
+        SeedToken 的 SHA-256 映射键。
+
+    Raises:
+        HTTPException: Cookie 缺失、无效或绑定账号不存在时返回 401。
+    """
+    return resolve_gateway_seed_value(request.cookies.get(GATEWAY_COOKIE_NAME, ""))
+
+
+def generate_gateway_seed(account_token):
+    """为指定账号生成并绑定唯一的浏览器访问密码。
+
+    Args:
+        account_token: 已存在于账号池中的 RT、AT 或 SessionToken。
+
+    Returns:
+        仅在本次生成响应中返回的明文 SeedToken。
+
+    Raises:
+        HTTPException: 账号不存在时返回 404。
+    """
+    if account_token not in globals.token_list:
+        raise HTTPException(status_code=404, detail="Account token not found")
+
+    previous = {}
+    for seed_key, seed_data in list(globals.seed_map.items()):
+        if seed_data.get("managed") and seed_data.get("token") == account_token:
+            previous = seed_data
+            del globals.seed_map[seed_key]
+
+    seed = secrets.token_urlsafe(24)
+    seed_data = {
+        "token": account_token,
+        "conversations": previous.get("conversations", []),
+        "managed": True,
+    }
+    if previous.get("user_id"):
+        seed_data["user_id"] = previous["user_id"]
+    globals.seed_map[_gateway_seed_key(seed)] = seed_data
+    with open(globals.SEED_MAP_FILE, "w", encoding="utf-8") as f:
+        json.dump(globals.seed_map, f, indent=4)
+    return seed
+
+
+def remove_gateway_seeds(account_token):
+    """删除指定账号绑定的浏览器访问密码。
+
+    Args:
+        account_token: 即将删除的账号 Token。
+
+    Returns:
+        删除的密码数量。
+    """
+    removed = 0
+    for seed_key, seed_data in list(globals.seed_map.items()):
+        if seed_data.get("managed") and seed_data.get("token") == account_token:
+            del globals.seed_map[seed_key]
+            removed += 1
+    if removed:
+        with open(globals.SEED_MAP_FILE, "w", encoding="utf-8") as f:
+            json.dump(globals.seed_map, f, indent=4)
+    return removed
+
+
+def has_gateway_seed(account_token):
+    """判断账号是否已绑定浏览器访问密码。
+
+    Args:
+        account_token: 账号 Token。
+
+    Returns:
+        存在受控 SeedToken 时返回 True。
+    """
+    return any(
+        seed_data.get("managed") and seed_data.get("token") == account_token
+        for seed_data in globals.seed_map.values()
+    )
 
 
 def get_req_token(req_token, seed=None):

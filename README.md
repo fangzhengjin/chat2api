@@ -231,9 +231,10 @@ chat2api migrate rollback ~/chat2api.backup-YYYYMMDD-HHMMSS
 
 `ENABLE_GATEWAY` 默认启用，可通过 `ENABLE_GATEWAY=false` 关闭：
 
-- `/login` 登录页 + 后台账号池随机抽取（`Seed` 设置随机账号）
-- `/?token=xxx` 直接登录（值为 RefreshToken / AccessToken / SeedToken）
-- 不同 SeedToken 会话隔离
+- 管理员在“账号实例 → 实例详情”中生成 Chat 访问密码，并绑定当前账号
+- `/login` 验证访问密码后写入 `HttpOnly` Cookie，未验证不能访问 Chat 页面和后端接口
+- 访问密码由后台生成，用户输入的任意 SeedToken 不会自动创建账号映射
+- 不同访问密码的会话相互隔离；重置密码后旧密码立即失效
 - 支持 GPTs 商店、DeepResearch、Canvas
 - 多语言切换、敏感接口禁用
 
@@ -344,8 +345,8 @@ curl -N 'http://127.0.0.1:5005/${API_PREFIX}/v1/chat/completions' \
 | 功能 | `ENABLE_LIMIT` | `true` | 不突破官方次数限制（防封号） |
 | 功能 | `SCHEDULED_REFRESH` | `false` | 定时刷新 AccessToken |
 | 功能 | `RANDOM_TOKEN` | `true` | 随机选取后台 Token（关闭则顺序轮询） |
-| 网关 | `ENABLE_GATEWAY` | `true` | 启用官网镜像；开启后默认无认证，需配 `AUTH_KEY` 或 IP 白名单 |
-| 网关 | `AUTO_SEED` | `true` | 启用随机账号模式（`seed` 参数自动匹配账号） |
+| 网关 | `ENABLE_GATEWAY` | `true` | 启用官网镜像；Chat 页面需使用后台生成的账号访问密码登录 |
+| 网关 | `AUTO_SEED` | `true` | OpenAI 兼容接口的既有 Token 路由开关，不影响 Chat 页面密码绑定 |
 | Antiban | `ENABLE_ANTIBAN` | `false`（multi 默认 `true`） | 风控规避层：IP 粘性桶 / 地域一致性 / 熔断自愈 |
 | Antiban | `STRICT_IP_BINDING` | `true` | 无匹配代理时拒绝（不退化到母机直连） |
 | Antiban | `BUCKET_MAX_ACCOUNTS_PER_IP` | `5`（multi 默认 `1`） | 每 IP 桶容纳的账号数 |

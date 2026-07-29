@@ -4,18 +4,16 @@ import random
 import time
 
 import jwt
-from fastapi import Request, HTTPException, Security
+from fastapi import Request, HTTPException
 from fastapi.responses import Response
-from fastapi.security import HTTPAuthorizationCredentials
 
-import utils.globals as globals
-from app import app, security_scheme
-from chatgpt.authorization import verify_token
+from app import app
+from chatgpt.authorization import resolve_gateway_seed, verify_token
 from chatgpt.fp import get_fp
 from gateway.reverseProxy import get_real_req_token
 from utils.Client import Client
 from utils.Logger import logger
-from utils.configs import proxy_url_list, chatgpt_base_url_list, authorization_list, accept_language, oai_language
+from utils.configs import proxy_url_list, chatgpt_base_url_list, accept_language, oai_language
 from utils.routing import get_bound_proxy
 
 base_headers = {
@@ -29,98 +27,6 @@ base_headers = {
     'sec-fetch-mode': 'cors',
     'sec-fetch-site': 'same-origin',
 }
-
-
-def verify_authorization(bearer_token):
-    if not bearer_token:
-        raise HTTPException(status_code=401, detail="Authorization header is missing")
-    if bearer_token not in authorization_list:
-        raise HTTPException(status_code=401, detail="Invalid authorization")
-
-
-@app.get("/seedtoken")
-async def get_seedtoken(request: Request, credentials: HTTPAuthorizationCredentials = Security(security_scheme)):
-    verify_authorization(credentials.credentials)
-    try:
-        params = request.query_params
-        seed = params.get("seed")
-
-        if seed:
-            if seed not in globals.seed_map:
-                raise HTTPException(status_code=404, detail=f"Seed '{seed}' not found")
-            return {
-                "status": "success",
-                "data": {
-                    "seed": seed,
-                    "token": globals.seed_map[seed]["token"]
-                }
-            }
-
-        token_map = {
-            seed: data["token"]
-            for seed, data in globals.seed_map.items()
-        }
-        return {"status": "success", "data": token_map}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-
-@app.post("/seedtoken")
-async def set_seedtoken(request: Request, credentials: HTTPAuthorizationCredentials = Security(security_scheme)):
-    verify_authorization(credentials.credentials)
-    data = await request.json()
-
-    seed = data.get("seed")
-    token = data.get("token")
-
-    if seed not in globals.seed_map:
-        globals.seed_map[seed] = {
-            "token": token,
-            "conversations": []
-        }
-    else:
-        globals.seed_map[seed]["token"] = token
-
-    with open(globals.SEED_MAP_FILE, "w", encoding="utf-8") as f:
-        json.dump(globals.seed_map, f, indent=4)
-
-    return {"status": "success", "message": "Token updated successfully"}
-
-
-@app.delete("/seedtoken")
-async def delete_seedtoken(request: Request, credentials: HTTPAuthorizationCredentials = Security(security_scheme)):
-    verify_authorization(credentials.credentials)
-
-    try:
-        data = await request.json()
-        seed = data.get("seed")
-
-        if seed == "clear":
-            globals.seed_map.clear()
-            with open(globals.SEED_MAP_FILE, "w", encoding="utf-8") as f:
-                json.dump(globals.seed_map, f, indent=4)
-            return {"status": "success", "message": "All seeds deleted successfully"}
-
-        if not seed:
-            raise HTTPException(status_code=400, detail="Missing required field: seed")
-
-        if seed not in globals.seed_map:
-            raise HTTPException(status_code=404, detail=f"Seed '{seed}' not found")
-        del globals.seed_map[seed]
-
-        with open(globals.SEED_MAP_FILE, "w", encoding="utf-8") as f:
-            json.dump(globals.seed_map, f, indent=4)
-
-        return {
-            "status": "success",
-            "message": f"Seed '{seed}' deleted successfully"
-        }
-
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON data")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 async def chatgpt_account_check(access_token):
@@ -217,6 +123,7 @@ async def chatgpt_refresh(refresh_token):
 
 @app.post("/auth/refresh")
 async def refresh(request: Request):
+    resolve_gateway_seed(request)
     auth_info = {}
     form_data = await request.form()
 

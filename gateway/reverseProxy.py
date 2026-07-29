@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse, Response
 from starlette.background import BackgroundTask
 
 import utils.globals as globals
-from chatgpt.authorization import verify_token, get_req_token
+from chatgpt.authorization import GATEWAY_COOKIE_NAME, get_req_token, resolve_gateway_seed, verify_token
 from chatgpt.fp import get_fp
 from utils.Client import Client
 from utils.Logger import logger
@@ -79,7 +79,6 @@ headers_accept_list = [
     "openai-sentinel-proof-token",
     "openai-sentinel-turnstile-token",
     "accept",
-    "authorization",
     "accept-encoding",
     "accept-language",
     "content-type",
@@ -181,6 +180,7 @@ async def chatgpt_reverse_proxy(request: Request, path: str):
 
         params = dict(request.query_params)
         request_cookies = dict(request.cookies)
+        request_cookies.pop(GATEWAY_COOKIE_NAME, None)
 
         # headers = {
         #     key: value for key, value in request.headers.items()
@@ -203,14 +203,10 @@ async def chatgpt_reverse_proxy(request: Request, path: str):
             base_url = "https://web-sandbox.oaiusercontent.com"
             path = path.replace("sandbox/", "")
 
-        token = headers.get("authorization", "").replace("Bearer ", "").strip()
-        if token:
-            req_token = await get_real_req_token(token)
-            access_token = await verify_token(req_token)
-            headers.update({"authorization": f"Bearer {access_token}"})
-
-        cookie_token = request.cookies.get("token", "")
-        req_token = await get_real_req_token(cookie_token)
+        token = resolve_gateway_seed(request)
+        req_token = await get_real_req_token(token)
+        access_token = await verify_token(req_token)
+        headers.update({"authorization": f"Bearer {access_token}"})
         fp = get_fp(req_token).copy()
 
         session_id = hashlib.md5(req_token.encode()).hexdigest()

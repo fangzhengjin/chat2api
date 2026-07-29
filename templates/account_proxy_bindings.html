@@ -108,6 +108,7 @@
             const bindApi = `${basePath}/admin/routing/account-bind`;
             const importAccountsApi = `${basePath}/admin/routing/accounts/import`;
             const deleteAccountApi = `${basePath}/admin/routing/accounts/delete`;
+            const chatPasswordApi = `${basePath}/admin/routing/accounts/chat-password`;
             const refreshAccountApi = `${basePath}/admin/routing/accounts/refresh`;
             const refreshAllAccountsApi = `${basePath}/admin/routing/accounts/refresh-all`;
             const testProxyApi = `${basePath}/admin/routing/test-proxy`;
@@ -466,12 +467,17 @@
                             <div class="text-xs font-semibold text-slate-400">完整 Token</div>
                             <div class="mt-1 break-all font-mono text-xs text-slate-500 select-all">${escapeHtml(account.token)}</div>
                         </div>
+                        <div class="rounded-2xl bg-slate-50 p-3">
+                            <div class="text-xs font-semibold text-slate-400">Chat 访问密码</div>
+                            <div class="mt-1 font-medium text-slate-800">${account.has_chat_password ? '已生成' : '未生成'}</div>
+                        </div>
                         ${errorBlock}
                     </div>
 
                     <div class="mt-5 grid grid-cols-2 gap-2">
                         <button class="edit-account-button rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700" data-token="${escapeHtml(account.token)}">编辑</button>
                         ${account.can_refresh ? `<button class="refresh-account-button rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white" data-token="${escapeHtml(account.token)}">立即刷新</button>` : '<span></span>'}
+                        <button class="chat-password-button col-span-2 rounded-xl bg-slate-950 px-3 py-2 text-sm font-semibold text-white" data-token="${escapeHtml(account.token)}">${account.has_chat_password ? '重置 Chat 访问密码' : '生成 Chat 访问密码'}</button>
                         <button class="delete-account-button col-span-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm font-semibold text-red-600" data-token="${escapeHtml(account.token)}">删除账号</button>
                     </div>
                 `;
@@ -901,6 +907,24 @@
                 openAccountModal('edit', account || null);
             }
 
+            async function generateChatPassword(token) {
+                const account = accountsCache.find((item) => item.token === token);
+                if (account?.has_chat_password && !window.confirm('重置后旧密码会立即失效，确认继续吗？')) return;
+                const response = await fetch(chatPasswordApi, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token }),
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    setStatus(result.detail || '访问密码生成失败');
+                    return;
+                }
+                window.prompt('访问密码仅展示本次，请立即复制：', result.password);
+                setStatus('Chat 访问密码已生成');
+                await loadDashboard();
+            }
+
             accountsTable.addEventListener('click', async (event) => {
                 const button = event.target.closest('.bind-account-button');
                 const editButton = event.target.closest('.edit-account-button');
@@ -922,9 +946,11 @@
                 accountDetailPanel.addEventListener('click', async (event) => {
                     const editButton = event.target.closest('.edit-account-button');
                     const refreshButton = event.target.closest('.refresh-account-button');
+                    const chatPasswordButton = event.target.closest('.chat-password-button');
                     const deleteButton = event.target.closest('.delete-account-button');
                     if (editButton) return editAccountToken(editButton.dataset.token);
                     if (refreshButton) return refreshAccountToken(refreshButton.dataset.token, refreshButton);
+                    if (chatPasswordButton) return generateChatPassword(chatPasswordButton.dataset.token);
                     if (deleteButton) return deleteAccountToken(deleteButton.dataset.token);
                 });
             }
