@@ -30,6 +30,19 @@ model_proxy = {
     "claude-3-haiku": "claude-3-haiku-20240307",
 }
 
+CHATGPT_MODEL_DISPLAY_NAMES = {
+    "gpt-5-3": "ChatGPT 5.3",
+    "gpt-5-3-instant": "ChatGPT 5.3 Instant",
+    "gpt-5-3-mini": "ChatGPT 5.3 Mini",
+    "gpt-5-5": "ChatGPT 5.5",
+    "gpt-5-5-instant": "ChatGPT 5.5 Instant",
+    "gpt-5-5-mini": "ChatGPT 5.5 Mini",
+    "gpt-5-5-pro": "ChatGPT 5.5 Pro",
+    "gpt-5-5-thinking": "ChatGPT 5.5 Thinking",
+    "gpt-5-6-pro": "ChatGPT 5.6 Pro",
+    "gpt-5-6-thinking": "ChatGPT 5.6 Thinking",
+}
+
 model_system_fingerprint = {
     "gpt-3.5-turbo-0125": ["fp_b28b39ffa8"],
     "gpt-3.5-turbo-1106": ["fp_592ef5907d"],
@@ -87,3 +100,44 @@ def extract_model_slugs(models_payload):
                     slugs.add(value)
 
     return slugs
+
+
+def filter_chatgpt_models_payload(models_payload):
+    """过滤网页端模型列表并覆盖展示名称。
+
+    Args:
+        models_payload: 当前账号的上游 ``/backend-api/models`` 响应对象。
+
+    Returns:
+        仅保留允许模型、按固定顺序排列的新响应对象。
+    """
+    model_items = models_payload.get("models")
+    if not isinstance(model_items, (list, dict)):
+        return models_payload
+
+    entries = model_items.items() if isinstance(model_items, dict) else enumerate(model_items)
+    selected = {}
+    for key, model in entries:
+        if not isinstance(model, dict):
+            continue
+        slug = next((model.get(name) for name in ("slug", "id", "model_slug") if model.get(name)), None)
+        nested_model = model.get("model")
+        if not slug and isinstance(nested_model, dict):
+            slug = next((nested_model.get(name) for name in ("slug", "id", "model_slug") if nested_model.get(name)), None)
+        if not slug and isinstance(key, str):
+            slug = key
+        if slug not in CHATGPT_MODEL_DISPLAY_NAMES:
+            continue
+
+        filtered_model = model.copy()
+        filtered_model["title"] = CHATGPT_MODEL_DISPLAY_NAMES[slug]
+        filtered_model["display_name"] = CHATGPT_MODEL_DISPLAY_NAMES[slug]
+        selected[slug] = (key, filtered_model)
+
+    ordered_slugs = [slug for slug in CHATGPT_MODEL_DISPLAY_NAMES if slug in selected]
+    filtered_payload = models_payload.copy()
+    if isinstance(model_items, dict):
+        filtered_payload["models"] = {selected[slug][0]: selected[slug][1] for slug in ordered_slugs}
+    else:
+        filtered_payload["models"] = [selected[slug][1] for slug in ordered_slugs]
+    return filtered_payload

@@ -2,7 +2,7 @@ import unittest
 
 from fastapi import HTTPException
 
-from api.models import resolve_request_model
+from api.models import filter_chatgpt_models_payload, resolve_request_model
 from chatgpt.services.model_mixin import ModelMixin
 
 
@@ -42,6 +42,30 @@ class ModelSelectionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(resolve_request_model("gpt-5-pro"), ("gpt-5-pro", None))
         self.assertEqual(resolve_request_model("gpt-5-5-pro"), ("gpt-5-5-pro", None))
         self.assertEqual(resolve_request_model("g-example"), ("gpt-5-5", "g-example"))
+
+    def test_chatgpt_models_are_filtered_named_and_ordered(self):
+        """网页端仅展示当前账号命中的白名单模型。"""
+        payload = {
+            "models": [
+                {"slug": "gpt-5-6-thinking", "title": "Thinking"},
+                {"slug": "gpt-4o", "title": "GPT-4o"},
+                {"slug": "gpt-5-3", "title": "GPT-5.3"},
+                {"slug": "gpt-5-5-pro", "title": "Pro"},
+            ],
+            "categories": ["unchanged"],
+        }
+
+        filtered = filter_chatgpt_models_payload(payload)
+
+        self.assertEqual(
+            [model["slug"] for model in filtered["models"]],
+            ["gpt-5-3", "gpt-5-5-pro", "gpt-5-6-thinking"],
+        )
+        self.assertEqual(
+            [model["title"] for model in filtered["models"]],
+            ["ChatGPT 5.3", "ChatGPT 5.5 Pro", "ChatGPT 5.6 Thinking"],
+        )
+        self.assertEqual(filtered["categories"], ["unchanged"])
 
     async def test_exact_remote_model_is_cached_for_twelve_hours(self):
         """精确模型通过校验，且同一账号在缓存期内只查询一次。"""

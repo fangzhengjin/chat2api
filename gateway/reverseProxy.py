@@ -9,6 +9,7 @@ from fastapi.responses import StreamingResponse, Response
 from starlette.background import BackgroundTask
 
 import utils.globals as globals
+from api.models import filter_chatgpt_models_payload
 from chatgpt.authorization import GATEWAY_COOKIE_NAME, get_req_token, resolve_gateway_seed, verify_token
 from chatgpt.fp import get_fp
 from utils.Client import Client
@@ -286,6 +287,12 @@ async def chatgpt_reverse_proxy(request: Request, path: str):
                                         status_code=r.status_code, background=background)
                 else:
                     content = await r.atext()
+                    if path == "backend-api/models" and r.status_code == 200:
+                        content = json.dumps(
+                            filter_chatgpt_models_payload(json.loads(content)),
+                            separators=(",", ":"),
+                            ensure_ascii=False,
+                        )
                     if "public-api/" in path:
                         content = (content
                                    .replace("https://ab.chatgpt.com", f"{petrol}://{origin_host}")
