@@ -20,6 +20,7 @@ from gateway.reverseProxy import chatgpt_reverse_proxy, content_generator, get_r
     headers_accept_list
 from utils.Client import Client
 from utils.Logger import logger
+from utils.token_parser import mask_token
 from utils.configs import x_sign, turnstile_solver_url, chatgpt_base_url_list, no_sentinel, sentinel_proxy_url_list, \
     force_no_history
 
@@ -657,7 +658,7 @@ if no_sentinel:
         r = await client.post_stream(f"{host_url}{request.url.path}", params=params, headers=headers,
                                      cookies=request_cookies, data=data, stream=True, allow_redirects=False)
         rheaders = r.headers
-        logger.info(f"Request token: {req_token}")
+        logger.info(f"Request token: {mask_token(req_token)}")
         logger.info(f"Request proxy: {proxy_url}")
         logger.info(f"Request UA: {user_agent}")
         logger.info(f"Request impersonate: {impersonate}")

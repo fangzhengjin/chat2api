@@ -17,6 +17,7 @@ from chatgpt.services._helpers import _sanitize_headers, _stringify_header_value
 from utils.Client import Client
 from utils.Logger import logger
 from utils import antiban
+from utils.token_parser import mask_token
 from utils.configs import (
     chatgpt_base_url_list,
     ark0se_token_url_list,
@@ -73,7 +74,7 @@ class ChatService(AuthMixin, ModelMixin, FileMixin):
                 )
             self.proxy_url = self.antiban_ctx.proxy_url
 
-        logger.info(f"Request token: {self.req_token}")
+        logger.info(f"Request token: {mask_token(self.req_token)}")
         logger.info(f"Request proxy: {self.proxy_url}")
         logger.info(f"Request UA: {self.user_agent}")
         logger.info(f"Request impersonate: {self.impersonate}")
