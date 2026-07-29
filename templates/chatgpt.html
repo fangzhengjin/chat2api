@@ -3,6 +3,38 @@
     <head>
         <meta charSet="UTF-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <script>
+            // 公网 HTTP 页面没有 crypto.randomUUID，官方前端首次保存会话时仍会调用它。
+            if (!crypto.randomUUID) {
+                crypto.randomUUID = function() {
+                    const bytes = crypto.getRandomValues(new Uint8Array(16));
+                    bytes[6] = (bytes[6] & 15) | 64;
+                    bytes[8] = (bytes[8] & 63) | 128;
+                    const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0'));
+                    return `${hex.slice(0, 4).join('')}-${hex.slice(4, 6).join('')}-${hex.slice(6, 8).join('')}-${hex.slice(8, 10).join('')}-${hex.slice(10).join('')}`;
+                };
+            }
+        </script>
+        <style>
+            nav[aria-label="Chat history"] a[title="ChatGPT"],
+            nav[aria-label="Chat history"] a[title="Sora"],
+            nav[aria-label="Chat history"] [data-testid="explore-gpts-button"],
+            nav[aria-label="Chat history"] div:has(> #snorlax-heading),
+            nav[aria-label="Chat history"] aside:has(> [aria-labelledby="snorlax-heading"]),
+            button[data-testid="share-chat-button"],
+            button[aria-label="Share"],
+            button[aria-label="共享"],
+            [role="menu"]:has([data-testid="logout-button"]) [role="menuitem"]:not([data-testid="logout-button"]):not(:has([data-testid="logout-button"])),
+            [role="menu"]:has([data-testid="logout-button"]) [role="separator"],
+            form[data-type="unified-composer"] [style*="--vt-composer-system-hint-action"],
+            form[data-type="unified-composer"] button[data-testid="composer-speech-button"],
+            form[data-type="unified-composer"] button[data-testid="voice-mode-button"],
+            form[data-type="unified-composer"] button[aria-label="Start voice mode"],
+            form[data-type="unified-composer"] button[aria-label="语音模式"],
+            form[data-type="unified-composer"] .absolute.bottom-1.right-3 button:has(svg path:nth-of-type(4)) {
+                display: none !important;
+            }
+        </style>
         <link rel="preload" as="image" href="/assets/sora-mutf8tav.webp"/>
         <link rel="preconnect" href=""/>
         <link rel="preconnect" href=""/>
