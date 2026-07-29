@@ -10,6 +10,7 @@ from fastapi.responses import Response
 from app import app
 from chatgpt.authorization import resolve_gateway_seed, verify_token
 from chatgpt.fp import get_fp
+from chatgpt.services._helpers import _sanitize_fingerprint_headers
 from gateway.reverseProxy import get_real_req_token
 from utils.Client import Client
 from utils.Logger import logger
@@ -41,7 +42,7 @@ async def chatgpt_account_check(access_token):
         impersonate = fp.pop("impersonate", "safari15_3")
 
         headers = base_headers.copy()
-        headers.update(fp)
+        headers.update(_sanitize_fingerprint_headers(fp))
         headers.update({"authorization": f"Bearer {access_token}"})
 
         session_id = hashlib.md5(access_token.encode()).hexdigest()

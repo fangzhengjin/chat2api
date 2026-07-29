@@ -12,9 +12,10 @@ from starlette.concurrency import run_in_threadpool
 
 import utils.globals as globals
 from app import app
-from chatgpt.authorization import GATEWAY_COOKIE_NAME, resolve_gateway_seed, verify_token
+from chatgpt.authorization import GATEWAY_COOKIE_NAME, require_gateway_conversation, resolve_gateway_seed, verify_token
 from chatgpt.fp import get_fp
 from chatgpt.proofofWork import get_answer_token, get_config, get_requirements_token
+from chatgpt.services._helpers import _sanitize_fingerprint_headers
 from gateway.chatgpt import chatgpt_html
 from gateway.reverseProxy import chatgpt_reverse_proxy, content_generator, get_real_req_token, headers_reject_list, \
     headers_accept_list
@@ -180,6 +181,7 @@ async def get_conversations(request: Request):
 @app.get("/backend-api/conversation/{conversation_id}")
 async def update_conversation(request: Request, conversation_id: str):
     token = resolve_gateway_seed(request)
+    require_gateway_conversation(token, conversation_id)
     conversation_details_response = await chatgpt_reverse_proxy(request,
                                                                 f"backend-api/conversation/{conversation_id}")
     if has_direct_access_token(token):
@@ -205,6 +207,7 @@ async def update_conversation(request: Request, conversation_id: str):
 @app.patch("/backend-api/conversation/{conversation_id}")
 async def patch_conversation(request: Request, conversation_id: str):
     token = resolve_gateway_seed(request)
+    require_gateway_conversation(token, conversation_id)
     patch_response = (await chatgpt_reverse_proxy(request, f"backend-api/conversation/{conversation_id}"))
     if has_direct_access_token(token):
         return patch_response
@@ -480,7 +483,7 @@ if no_sentinel:
             key: value for key, value in request.headers.items()
             if (key.lower() in headers_accept_list)
         }
-        headers.update(fp)
+        headers.update(_sanitize_fingerprint_headers(fp))
         headers.update({"authorization": f"Bearer {access_token}"})
         session_id = hashlib.md5(req_token.encode()).hexdigest()
         proxy_url = proxy_url.replace("{}", session_id) if proxy_url else None
@@ -580,7 +583,7 @@ if no_sentinel:
             key: value for key, value in request.headers.items()
             if (key.lower() in headers_accept_list)
         }
-        headers.update(fp)
+        headers.update(_sanitize_fingerprint_headers(fp))
         headers.update({"authorization": f"Bearer {access_token}"})
 
         try:

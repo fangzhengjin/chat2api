@@ -12,6 +12,7 @@ import utils.globals as globals
 from api.models import filter_chatgpt_models_payload
 from chatgpt.authorization import GATEWAY_COOKIE_NAME, get_req_token, resolve_gateway_seed, verify_token
 from chatgpt.fp import get_fp
+from chatgpt.services._helpers import _sanitize_fingerprint_headers
 from utils.Client import Client
 from utils.Logger import logger
 from utils.configs import chatgpt_base_url_list, sentinel_proxy_url_list, force_no_history, file_host, voice_host, accept_language
@@ -90,6 +91,18 @@ headers_accept_list = [
     "sec-fetch-mode",
     "sec-fetch-site",
 ]
+
+
+# 公共资源不需要账号凭据，避免把 Token 和 Cookie 发送到非 ChatGPT API 域名。
+_PUBLIC_RESOURCE_HOSTS = {
+    "https://cdn.oaistatic.com",
+    "https://files.oaiusercontent.com",
+    "https://web-sandbox.oaiusercontent.com",
+}
+
+
+def _is_public_resource(path, base_url):
+    return base_url in _PUBLIC_RESOURCE_HOSTS or path in {"favicon.ico", "sw.js"}
 
 
 async def get_real_req_token(token):
@@ -204,10 +217,15 @@ async def chatgpt_reverse_proxy(request: Request, path: str):
             base_url = "https://web-sandbox.oaiusercontent.com"
             path = path.replace("sandbox/", "")
 
+        public_resource = _is_public_resource(path, base_url)
+        if public_resource:
+            request_cookies.clear()
+
         token = resolve_gateway_seed(request)
         req_token = await get_real_req_token(token)
-        access_token = await verify_token(req_token)
-        headers.update({"authorization": f"Bearer {access_token}"})
+        if not public_resource:
+            access_token = await verify_token(req_token)
+            headers.update({"authorization": f"Bearer {access_token}"})
         fp = get_fp(req_token).copy()
 
         session_id = hashlib.md5(req_token.encode()).hexdigest()
@@ -215,7 +233,7 @@ async def chatgpt_reverse_proxy(request: Request, path: str):
         proxy_url = fp.pop("proxy_url", None)
         impersonate = fp.pop("impersonate", "safari15_3")
         user_agent = fp.get("user-agent")
-        headers.update(fp)
+        headers.update(_sanitize_fingerprint_headers(fp))
 
         headers.update({
             "accept-language": accept_language,

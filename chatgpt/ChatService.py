@@ -12,7 +12,7 @@ from chatgpt.chatLimit import check_is_limit, handle_request_limit
 from chatgpt.fp import get_fp
 from chatgpt.proofofWork import get_config, get_dpl, get_answer_token, get_requirements_token
 from chatgpt.services import AuthMixin, FileMixin, ModelMixin
-from chatgpt.services._helpers import _sanitize_headers, _stringify_header_value
+from chatgpt.services._helpers import _sanitize_fingerprint_headers, _stringify_header_value
 
 from utils.Client import Client
 from utils.Logger import logger
@@ -128,21 +128,7 @@ class ChatService(AuthMixin, ModelMixin, FileMixin):
         _pref_motion = self.fp.get("prefers_reduced_motion")
         if _pref_motion in ("no-preference", "reduce"):
             self.base_headers['sec-ch-prefers-reduced-motion'] = _pref_motion
-        # 过滤掉 fp 中的非 HTTP-header 内部指纹字段（screen/viewport 等仅供 PoW 与 contextual_info 使用）
-        for _internal_key in (
-            "screen", "hardware_concurrency", "device_memory", "pixel_ratio", "viewport",
-            # 扩展指纹字段：仅供 client_contextual_info / 未来 sentinel 字段使用，绝不能进 HTTP 头
-            "nav_platform", "languages", "max_touch_points", "webgl",
-            "color_scheme", "prefers_reduced_motion", "color_gamut",
-            "connection", "audio",
-            # T2/T3/T5/M1/M2 等纯指纹字段
-            "canvas_hash", "font_list_hash", "font_list_count", "audio_fp_hash",
-            "timezone", "intl_locale", "user_pace", "virtual_page_load_ms",
-            # D2/D3 深耕字段
-            "webgpu", "webrtc",
-        ):
-            self.fp.pop(_internal_key, None)
-        self.base_headers.update(_sanitize_headers(self.fp))
+        self.base_headers.update(_sanitize_fingerprint_headers(self.fp))
 
         if self.access_token:
             self.base_url = self.host_url + "/backend-api"

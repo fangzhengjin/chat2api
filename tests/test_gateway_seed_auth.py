@@ -10,6 +10,7 @@ from chatgpt.authorization import (
     delete_gateway_seed,
     generate_gateway_seed,
     list_gateway_seeds,
+    require_gateway_conversation,
     reset_gateway_seed,
     resolve_gateway_seed,
 )
@@ -57,6 +58,10 @@ class GatewaySeedAuthTests(unittest.TestCase):
         first_metadata = globals.seed_map[first_key].copy()
         self.assertNotEqual(first_key, second_key)
         self.assertEqual({item["note"] for item in list_gateway_seeds("rt.1.test-account")}, {"张三", "李四"})
+        require_gateway_conversation(first_key, "conversation-1")
+        with self.assertRaises(HTTPException) as conversation_error:
+            require_gateway_conversation(second_key, "conversation-1")
+        self.assertEqual(conversation_error.exception.status_code, 404)
 
         replacement = reset_gateway_seed(first_key)
         replacement_key = resolve_gateway_seed(_Request(replacement))

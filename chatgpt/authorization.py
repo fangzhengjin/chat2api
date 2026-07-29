@@ -81,6 +81,24 @@ def resolve_gateway_seed(request):
     return resolve_gateway_seed_value(request.cookies.get(GATEWAY_COOKIE_NAME, ""))
 
 
+def require_gateway_conversation(seed_key, conversation_id):
+    """确认会话属于当前浏览器访问密码。
+
+    Args:
+        seed_key: 已验证的访问密码内部映射键。
+        conversation_id: 待访问的上游会话 ID。
+
+    Returns:
+        无返回值。
+
+    Raises:
+        HTTPException: 会话不属于当前访问密码时返回 404。
+    """
+    seed_data = globals.seed_map.get(seed_key, {})
+    if conversation_id not in seed_data.get("conversations", []):
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+
 def generate_gateway_seed(account_token, note=""):
     """为指定账号新增浏览器访问密码。
 
