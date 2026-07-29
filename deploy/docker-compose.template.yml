@@ -1,6 +1,6 @@
 services:
   chat2api:
-    image: ${CHAT2API_IMAGE:-ghcr.io/nanashiwang/chat2api:latest}
+    image: ${CHAT2API_IMAGE:-ghcr.io/fangzhengjin/chat2api:next}
     container_name: chat2api
     restart: unless-stopped
     pull_policy: always
@@ -23,7 +23,7 @@ services:
       ENABLE_LIMIT: 'true'
       UPLOAD_BY_URL: 'false'
       OAI_LANGUAGE: 'zh-CN'
-      ENABLE_GATEWAY: 'false'
+      ENABLE_GATEWAY: 'true'
       AUTO_SEED: 'true'
 
       # ============ Antiban 风控规避层 ============

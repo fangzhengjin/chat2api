@@ -464,7 +464,7 @@ async function showSecret(slug) {
     if (!confirm(`查看 ${slug} 的明文凭证？\n该操作会写入审计日志。`)) return;
     try {
         const d = await api('GET', '/api/secrets/' + encodeURIComponent(slug));
-        const origin = location.origin;   // e.g. http://107.172.96.31:60403
+        const origin = location.origin;   // e.g. http://107.172.96.31:9004
         const adminUrl = `${origin}/${d.slug}/admin/login`;
         const apiUrl   = `${origin}/${d.slug}/v1/chat/completions`;
         $('#secret-body').innerHTML = `

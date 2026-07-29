@@ -3,7 +3,7 @@
 # chat2api 一键部署脚本
 # ============================================================
 # 使用方式（新机器）：
-#   curl -fsSL https://raw.githubusercontent.com/nanashiwang/chat2api/main/deploy/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/fangzhengjin/chat2api/next/deploy/install.sh | bash
 # 或下载后：
 #   bash install.sh
 #
@@ -15,7 +15,7 @@
 #
 # 自定义环境变量（可选，脚本启动前 export 即可）：
 #   INSTALL_DIR   安装目录（默认 $HOME/chat2api）
-#   CHAT2API_PORT 监听端口（默认 60403）
+#   CHAT2API_PORT 监听端口（多实例默认 9004，单实例默认 60403）
 #   GITHUB_RAW    仓库 raw URL（默认官方）
 #   GITHUB_REPO   仓库 URL（默认官方，用于下载 deploy/multi）
 #   CHAT2API_MODE  部署模式：multi（默认）/ single
@@ -33,10 +33,16 @@ err()  { echo -e "${C_ERR}[✗]${C_RESET} $*" >&2; }
 
 # ----- 配置默认值 -----
 INSTALL_DIR="${INSTALL_DIR:-$HOME/chat2api}"
-GITHUB_RAW="${GITHUB_RAW:-https://raw.githubusercontent.com/nanashiwang/chat2api/main}"
-GITHUB_REPO="${GITHUB_REPO:-https://github.com/nanashiwang/chat2api}"
-CHAT2API_PORT="${CHAT2API_PORT:-60403}"
+GITHUB_RAW="${GITHUB_RAW:-https://raw.githubusercontent.com/fangzhengjin/chat2api/next}"
+GITHUB_REPO="${GITHUB_REPO:-https://github.com/fangzhengjin/chat2api}"
 CHAT2API_MODE="${CHAT2API_MODE:-multi}"
+if [ -z "${CHAT2API_PORT:-}" ]; then
+    if [ "$CHAT2API_MODE" = "multi" ]; then
+        CHAT2API_PORT="9004"
+    else
+        CHAT2API_PORT="60403"
+    fi
+fi
 INTERACTIVE="${INTERACTIVE:-0}"
 SCRIPT_SOURCE="${BASH_SOURCE[0]-}"
 SCRIPT_SOURCE_DIR=""
@@ -167,7 +173,7 @@ sync_deploy_assets() {
         return 0
     }
 
-    if curl -fsSL "${GITHUB_REPO}/archive/refs/heads/main.tar.gz" | tar -xz -C "$tmp_dir"; then
+    if curl -fsSL "${GITHUB_REPO}/archive/refs/heads/next.tar.gz" | tar -xz -C "$tmp_dir"; then
         archive_dir="$(find "$tmp_dir" -maxdepth 1 -type d -name 'chat2api-*' | head -1)"
         if [ -n "$archive_dir" ] && [ -d "$archive_dir/deploy" ]; then
             cp -R "$archive_dir/deploy"/. "$INSTALL_DIR/deploy/"

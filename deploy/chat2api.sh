@@ -2,8 +2,8 @@
 set -euo pipefail
 
 CONFIG_FILE="/etc/chat2api.env"
-GITHUB_RAW_DEFAULT="https://raw.githubusercontent.com/nanashiwang/chat2api/main"
-GITHUB_REPO_DEFAULT="https://github.com/nanashiwang/chat2api"
+GITHUB_RAW_DEFAULT="https://raw.githubusercontent.com/fangzhengjin/chat2api/next"
+GITHUB_REPO_DEFAULT="https://github.com/fangzhengjin/chat2api"
 
 if [[ -f "$CONFIG_FILE" ]]; then
   # shellcheck disable=SC1091
@@ -103,7 +103,7 @@ sync_deploy_assets_from_remote() {
   local tmp_dir archive_dir
   tmp_dir="$(mktemp -d)" || return 0
   echo "[*] 同步部署脚本与编排面板..."
-  if curl -fsSL --max-time 30 "${GITHUB_REPO}/archive/refs/heads/main.tar.gz" | tar -xz -C "$tmp_dir"; then
+  if curl -fsSL --max-time 30 "${GITHUB_REPO}/archive/refs/heads/next.tar.gz" | tar -xz -C "$tmp_dir"; then
     archive_dir="$(find "$tmp_dir" -maxdepth 1 -type d -name 'chat2api-*' | head -1)"
     if [[ -n "$archive_dir" && -d "$archive_dir/deploy" ]]; then
       mkdir -p "$INSTALL_DIR/deploy"
@@ -205,7 +205,7 @@ remove_known_chat2api_containers() {
   if ! command -v docker >/dev/null 2>&1; then
     return 0
   fi
-  docker rm -f chat2api watchtower c2a-nginx c2a-orchestrator c2a-watchtower >/dev/null 2>&1 || true
+  docker rm -f chat2api c2a-nginx c2a-orchestrator >/dev/null 2>&1 || true
 }
 
 confirm_uninstall() {

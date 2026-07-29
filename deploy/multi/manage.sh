@@ -78,7 +78,7 @@ orch_api_key() {
 cmd_access_summary() {
     [ -f "$GEN_DIR/orch.env" ] || return 0
     local port host orch_pwd
-    port="${CHAT2API_GATEWAY_PORT:-60403}"
+    port="${CHAT2API_GATEWAY_PORT:-9004}"
     host="$(public_host)"
     orch_pwd="$(orch_password)"
     cat <<EOF
@@ -265,7 +265,7 @@ cmd_secrets() {
             | sed 's/^/  /'
         grep '^ORCH_PASSWORD=' "$GEN_DIR/orch.env" 2>/dev/null \
             | sed 's/^/  /'
-        local port="${CHAT2API_GATEWAY_PORT:-60403}"
+        local port="${CHAT2API_GATEWAY_PORT:-9004}"
         local host
         host="$(public_host)"
         echo "  URL: http://${host}:${port}/orchestrator/"
@@ -340,7 +340,7 @@ check_contains() {
 cmd_verify() {
     require_compose
     ensure_csv
-    local port="${CHAT2API_GATEWAY_PORT:-60403}"
+    local port="${CHAT2API_GATEWAY_PORT:-9004}"
     local failed=0 slug env_prefix container_prefix nginx_block admin_out tokens_out
     log "校验路由与后台页面..."
     for slug in $(slugs); do
@@ -384,7 +384,7 @@ cmd_verify() {
 
 cmd_verify_orchestrator() {
     require_compose
-    local port="${CHAT2API_GATEWAY_PORT:-60403}"
+    local port="${CHAT2API_GATEWAY_PORT:-9004}"
     local js_out app_out models_out
     log "校验 orchestrator 静态资源..."
     if ! js_out="$(check_contains "http://127.0.0.1:${port}/orchestrator/static/app.js" 'pg-custom-model' 6)"; then
@@ -441,8 +441,8 @@ chat2api 多实例运维（一容器一账号）
   ./manage.sh help                          显示本帮助
 
 环境变量（可选）:
-  CHAT2API_GATEWAY_PORT  nginx 对外端口（默认 60403）
-  CHAT2API_IMAGE         覆盖镜像（默认 ghcr.io/nanashiwang/chat2api:latest）
+  CHAT2API_GATEWAY_PORT  nginx 对外端口（默认 9004）
+  CHAT2API_IMAGE         覆盖镜像（默认 ghcr.io/fangzhengjin/chat2api:next）
 
 文件:
   accounts.csv           真实账号清单（敏感，git 忽略）

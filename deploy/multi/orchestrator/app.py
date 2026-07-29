@@ -875,7 +875,6 @@ def log_targets() -> list[dict[str, str]]:
     targets = [
         {"id": "orchestrator", "label": "orchestrator 面板", "container": "c2a-orchestrator"},
         {"id": "nginx", "label": "nginx 网关", "container": "c2a-nginx"},
-        {"id": "watchtower", "label": "watchtower 更新器", "container": "c2a-watchtower"},
     ]
     for row in read_accounts():
         slug = row["slug"]
@@ -1613,9 +1612,9 @@ def _get_instance_info(slug: str) -> dict:
     env = read_env_file(WORK / "generated" / "env" / f"{slug}.env")
     api_prefix = env.get("API_PREFIX", "")
     authorization = env.get("AUTHORIZATION", "")
-    # gateway 暴露在容器外端口 60403，nginx 反代到 c2a-{slug}:5005
+    # gateway 暴露在容器外端口 9004，nginx 反代到 c2a-{slug}:5005
     # 这里给"对外可调用"的 URL；调用方自己拼 /v1
-    gateway_port = os.environ.get("ORCH_GATEWAY_PUBLIC_PORT", "60403")
+    gateway_port = os.environ.get("ORCH_GATEWAY_PUBLIC_PORT", "9004")
     gateway_host = os.environ.get("ORCH_GATEWAY_PUBLIC_HOST", "")
     if gateway_host:
         base_url = f"http://{gateway_host}:{gateway_port}/{api_prefix}/v1" if api_prefix else ""
@@ -1873,7 +1872,7 @@ async def api_export(fmt: str, request: Request) -> Response:
         raise HTTPException(status_code=400, detail=f"不支持的格式: {fmt}")
     filename, mime, generator = _EXPORT_FORMATS[fmt]
     # 拼对外可访问的 origin（导出文件里需要全 URL）
-    gateway_port = os.environ.get("ORCH_GATEWAY_PUBLIC_PORT", "60403")
+    gateway_port = os.environ.get("ORCH_GATEWAY_PUBLIC_PORT", "9004")
     gateway_host = os.environ.get("ORCH_GATEWAY_PUBLIC_HOST") or request.url.hostname or "localhost"
     gateway_origin = f"http://{gateway_host}:{gateway_port}"
     rows = _build_aggregate()

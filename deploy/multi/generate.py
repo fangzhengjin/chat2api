@@ -12,7 +12,7 @@
 1. 纯标准库（stdlib），无 jinja2 依赖
 2. 已有 env 文件中的 AUTHORIZATION/ADMIN_PASSWORD/API_PREFIX 复用，避免重生成导致客户端 key 失效
 3. 每实例独立 SOCKS5 代理（可空）；空时 PROXY_URL 不写入
-4. 不映射 chat2api 实例的宿主端口，仅 nginx 暴露 60403
+4. 不映射 chat2api 实例的宿主端口，仅 nginx 暴露 9004
 """
 from __future__ import annotations
 
@@ -38,12 +38,9 @@ ORCH_ENV = GEN_DIR / "orch.env"
 SLUG_RE = re.compile(r"^[a-z0-9-]{1,16}$")
 PROXY_RE = re.compile(r"^(socks5|socks5h|http|https)://[^\s]+$")
 
-NGINX_PORT = int(os.environ.get("CHAT2API_GATEWAY_PORT", "60403"))
+NGINX_PORT = int(os.environ.get("CHAT2API_GATEWAY_PORT", "9004"))
 CHAT2API_IMAGE = os.environ.get(
-    "CHAT2API_IMAGE", "ghcr.io/nanashiwang/chat2api:latest"
-)
-WATCHTOWER_IMAGE = os.environ.get(
-    "WATCHTOWER_IMAGE", "nickfedor/watchtower:latest"
+    "CHAT2API_IMAGE", "ghcr.io/fangzhengjin/chat2api:next"
 )
 ORCH_ENABLED = os.environ.get("ORCH_ENABLED", "true").lower() != "false"
 
@@ -126,7 +123,7 @@ def read_csv() -> list[tuple[str, str, str]]:
                 fail(f"第 {i} 行 proxy_url='{proxy}' 不合法")
             rows.append((slug, proxy, note))
     if not rows:
-        info("CSV 暂无账号，仅启动 orchestrator + nginx + watchtower（可在面板内增加）")
+        info("CSV 暂无账号，仅启动 orchestrator + nginx（可在面板内增加）")
     return rows
 
 
@@ -177,8 +174,6 @@ x-chat2api-common: &c2a-common
   restart: unless-stopped
   pull_policy: always
   networks: [c2a-net]
-  labels:
-    com.centurylinklabs.watchtower.enable: 'true'
   # 资源/权限边界：单实例故障不污染母机与同行容器
   cap_drop: [ALL]
   security_opt:
@@ -261,9 +256,6 @@ COMPOSE_ORCHESTRATOR = """\
     volumes:
       - '{host_path}:{host_path}'
       - /var/run/docker.sock:/var/run/docker.sock
-    labels:
-      com.centurylinklabs.watchtower.enable: 'true'
-
 """
 
 COMPOSE_FOOTER = """\
@@ -278,14 +270,6 @@ COMPOSE_FOOTER = """\
     networks: [c2a-net]
     depends_on:
 {depends_on}
-
-  watchtower:
-    image: {watchtower_image}
-    container_name: c2a-watchtower
-    restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: --label-enable --cleanup --interval 300
 
 networks:
   c2a-net:
@@ -302,7 +286,7 @@ def render_compose(accounts: list[Account]) -> str:
     body = COMPOSE_HEADER.format(image=CHAT2API_IMAGE) + services
     if ORCH_ENABLED:
         body += COMPOSE_ORCHESTRATOR.format(host_path=str(ROOT).replace("'", "''"))
-    body += COMPOSE_FOOTER.format(port=NGINX_PORT, depends_on=depends_on, watchtower_image=WATCHTOWER_IMAGE)
+    body += COMPOSE_FOOTER.format(port=NGINX_PORT, depends_on=depends_on)
     return body
 
 
@@ -386,7 +370,7 @@ NGINX_LOCATION = """\
             proxy_set_header X-Forwarded-Proto $scheme;
             # chat2api 内部硬编码 API_PREFIX 到 redirect / cookie / HTML 链接里，
             # 经 nginx 反代后必须把 /{api_prefix}/ 改回 /{slug}/，否则用户登录后跳转 404
-            # 用 $scheme://$http_host 拼完整 URL（含客户端原始端口如 :60403）
+            # 用 $scheme://$http_host 拼完整 URL（含客户端原始端口如 :9004）
             proxy_redirect ~^/{api_prefix}/(.*)$ $scheme://$http_host/{slug}/$1;
             proxy_cookie_path /{api_prefix} /{slug};
             # sub_filter 改写响应体内的硬编码链接（CSS/JS/HTML）；强制无 gzip 才能改

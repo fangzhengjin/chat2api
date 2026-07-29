@@ -56,7 +56,7 @@ if [ -n "$SCRIPT_SOURCE_DIR" ] && [ -f "$SCRIPT_SOURCE_DIR/chat2api.sh" ]; then
   $SUDO install -m 0755 "$SCRIPT_SOURCE_DIR/chat2api.sh" /usr/local/bin/chat2api
 else
   tmp_script="$(mktemp)"
-  curl -fsSL "https://raw.githubusercontent.com/nanashiwang/chat2api/main/deploy/chat2api.sh" -o "$tmp_script"
+  curl -fsSL "https://raw.githubusercontent.com/fangzhengjin/chat2api/next/deploy/chat2api.sh" -o "$tmp_script"
   $SUDO install -m 0755 "$tmp_script" /usr/local/bin/chat2api
   rm -f "$tmp_script"
 fi

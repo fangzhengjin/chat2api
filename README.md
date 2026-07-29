@@ -19,7 +19,7 @@
 ### 一键部署（零交互）
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nanashiwang/chat2api/main/deploy/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/fangzhengjin/chat2api/next/deploy/install.sh | bash
 ```
 
 脚本默认部署多实例编排面板：装 Docker → 下载编排脚本 → 启动 orchestrator → 安装 `chat2api` 管理命令 → 打印访问地址。
@@ -155,16 +155,16 @@ docker logs c2a-<slug> | grep session_sticky
 ### 一句话部署
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nanashiwang/chat2api/main/deploy/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/fangzhengjin/chat2api/next/deploy/install.sh | bash
 ```
 
 初始化完成后，脚本会直接输出编排面板入口和密码，然后打开：
 
 ```text
-http://<vps>:60403/orchestrator/
+http://<vps>:9004/orchestrator/
 ```
 
-如果你已经用一键脚本装了单实例，请走迁移流程，避免 60403 端口冲突：
+如果你已经用一键脚本装了单实例，请走迁移流程：
 
 ```bash
 chat2api migrate prep
@@ -180,7 +180,7 @@ chat2api migrate apply
 多实例会额外暴露一个统一 OpenAI 兼容入口，由 Orchestrator 自动均衡到各个账号容器：
 
 ```text
-Base URL: http://<vps>:60403/v1
+Base URL: http://<vps>:9004/v1
 API Key:  编排面板右上角「统一 API」查看
 ```
 
@@ -229,7 +229,7 @@ chat2api migrate rollback ~/chat2api.backup-YYYYMMDD-HHMMSS
 
 ### 官网镜像（Gateway 模式）
 
-`ENABLE_GATEWAY=true` 后启用：
+`ENABLE_GATEWAY` 默认启用，可通过 `ENABLE_GATEWAY=false` 关闭：
 
 - `/login` 登录页 + 后台账号池随机抽取（`Seed` 设置随机账号）
 - `/?token=xxx` 直接登录（值为 RefreshToken / AccessToken / SeedToken）
@@ -344,7 +344,7 @@ curl -N 'http://127.0.0.1:5005/${API_PREFIX}/v1/chat/completions' \
 | 功能 | `ENABLE_LIMIT` | `true` | 不突破官方次数限制（防封号） |
 | 功能 | `SCHEDULED_REFRESH` | `false` | 定时刷新 AccessToken |
 | 功能 | `RANDOM_TOKEN` | `true` | 随机选取后台 Token（关闭则顺序轮询） |
-| 网关 | `ENABLE_GATEWAY` | `false` | 启用官网镜像；开启后默认无认证，需配 `AUTH_KEY` 或 IP 白名单 |
+| 网关 | `ENABLE_GATEWAY` | `true` | 启用官网镜像；开启后默认无认证，需配 `AUTH_KEY` 或 IP 白名单 |
 | 网关 | `AUTO_SEED` | `true` | 启用随机账号模式（`seed` 参数自动匹配账号） |
 | Antiban | `ENABLE_ANTIBAN` | `false`（multi 默认 `true`） | 风控规避层：IP 粘性桶 / 地域一致性 / 熔断自愈 |
 | Antiban | `STRICT_IP_BINDING` | `true` | 无匹配代理时拒绝（不退化到母机直连） |
@@ -372,13 +372,13 @@ curl -N 'http://127.0.0.1:5005/${API_PREFIX}/v1/chat/completions' \
 零交互，默认安装多实例编排面板：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nanashiwang/chat2api/main/deploy/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/fangzhengjin/chat2api/next/deploy/install.sh | bash
 ```
 
 如需旧的单实例模式：
 
 ```bash
-CHAT2API_MODE=single bash <(curl -fsSL https://raw.githubusercontent.com/nanashiwang/chat2api/main/deploy/install.sh)
+CHAT2API_MODE=single bash <(curl -fsSL https://raw.githubusercontent.com/fangzhengjin/chat2api/next/deploy/install.sh)
 ```
 
 可选环境变量：
@@ -386,17 +386,16 @@ CHAT2API_MODE=single bash <(curl -fsSL https://raw.githubusercontent.com/nanashi
 | 变量 | 用途 |
 |---|---|
 | `INSTALL_DIR` | 自定义安装目录（默认 `~/chat2api`） |
-| `CHAT2API_PORT` | 监听端口（默认 `60403`） |
+| `CHAT2API_PORT` | 监听端口（多实例默认 `9004`，单实例默认 `60403`） |
 | `CHAT2API_MODE` | `multi`（默认）或 `single` |
 | `INTERACTIVE=1` | 交互式询问密码 / API 前缀 |
 
 ### 直接源码部署
 
 ```bash
-git clone https://github.com/nanashiwang/chat2api
+git clone -b next https://github.com/fangzhengjin/chat2api
 cd chat2api
-pip install -r requirements.txt
-python app.py
+uv run --with-requirements requirements.txt python app.py
 ```
 
 ### Docker
@@ -406,14 +405,14 @@ docker run -d --name chat2api \
   -p 5005:5005 \
   -v $(pwd)/data:/app/data \
   -e AUTHORIZATION=sk-your-key \
-  ghcr.io/nanashiwang/chat2api:latest
+  ghcr.io/fangzhengjin/chat2api:next
 ```
 
 ### Docker Compose（自定义部署）
 
 ```bash
 mkdir chat2api && cd chat2api
-curl -fsSL https://raw.githubusercontent.com/nanashiwang/chat2api/main/deploy/docker-compose.template.yml -o docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/fangzhengjin/chat2api/next/deploy/docker-compose.template.yml -o docker-compose.yml
 # 创建 .env 写入 ADMIN_PASSWORD / AUTHORIZATION / API_PREFIX
 docker compose up -d
 ```
@@ -449,7 +448,7 @@ chat2api admin                   # 打印管理后台访问 URL
 
 ```bash
 # 拉新版 chat2api.sh 脚本
-sudo curl -fsSL https://raw.githubusercontent.com/nanashiwang/chat2api/main/deploy/chat2api.sh \
+sudo curl -fsSL https://raw.githubusercontent.com/fangzhengjin/chat2api/next/deploy/chat2api.sh \
   -o /usr/local/bin/chat2api && sudo chmod +x /usr/local/bin/chat2api
 chat2api update           # 拉镜像
 chat2api sync-template    # 单实例：拉新 ENV
