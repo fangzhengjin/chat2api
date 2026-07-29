@@ -21,7 +21,6 @@ services:
       RANDOM_TOKEN: 'false'
       SCHEDULED_REFRESH: 'true'
       ENABLE_LIMIT: 'true'
-      CHECK_MODEL: 'false'
       UPLOAD_BY_URL: 'false'
       OAI_LANGUAGE: 'zh-CN'
       ENABLE_GATEWAY: 'false'

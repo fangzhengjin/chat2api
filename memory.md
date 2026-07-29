@@ -42,7 +42,7 @@
 - `app.py` 负责创建 FastAPI 应用、注册 CORS，并根据 `ENABLE_GATEWAY` 决定是否加载 `gateway/*` 路由。
 - `api/chat2api.py` 暴露 `/v1/chat/completions`、`/v1/models`、`/tokens` 等接口，并负责调度 `ChatService`。
 - `chatgpt/ChatService.py` 负责请求上下文初始化、鉴权、模型选择、上游会话准备与发送。
-- `utils/configs.py` 负责读取环境变量；当前已存在 `CHECK_MODEL` 与 `HISTORY_DISABLED` 配置项。
+- `utils/configs.py` 负责读取环境变量；模型始终按远程列表精确校验。
 - `gateway/backend.py`、`gateway/v1.py`、`gateway/reverseProxy.py` 承担官网镜像侧的反向代理与响应修正。
 - `utils/retry.py` 是 API 路径上的通用重试入口，行为变化会影响多个调用链。
 
@@ -62,13 +62,13 @@
 
 当前未提交改动的意图如下：
 
-- 抽取 `MODEL_REQUEST_RULES`，统一维护“外部模型名 -> 上游请求模型名”的映射规则。
+- 普通模型直接使用上游返回的精确 slug，不维护本地请求映射或前缀回退。
 - 新增 `get_response_model(origin_model)`，统一响应模型名回写逻辑。
-- 新增 `resolve_request_model(origin_model)`，把请求模型解析、`gizmo` 识别、动态模型判定集中到一个地方。
+- `resolve_request_model(origin_model)` 只负责默认模型和 `gizmo` 识别。
 - 新增 `extract_model_slugs(models_payload)`，用于从上游 `/backend-api/models` 返回中提取可用模型集合。
 - 在 `ChatService` 中引入 `resolve_auth_context()` 与 `initialize_request_context()`，把原本耦合在 `set_dynamic_data()` 中的职责拆开。
 - 增加 `model_not_found()`、`fetch_available_models()`、`validate_model_access()`，统一 404 语义并增加模型可用性校验。
-- 增加按 `host_url + account_id + token_hash` 划分的模型缓存，TTL 为 300 秒。
+- 按 `host_url + account_id + token_hash` 划分模型缓存，TTL 为 12 小时。
 
 当前判断：
 
@@ -155,7 +155,7 @@
 - `README.md` 在当前 PowerShell 输出中出现乱码，推测是终端编码展示问题；不要基于控制台乱码直接改写文档内容。
 - `memory.md` 已按 UTF-8 with BOM 保存，以提高 Windows 本地打开时的稳定性；如果终端仍乱码，优先检查控制台输出编码，而不是重写文件内容。
 - `/v1/models` 依赖上游 `/backend-api/models`；需要验证不同账户态、代理态、异常态下的返回是否稳定。
-- `resolve_request_model()` 的默认回退策略已从“未知模型强制回退到 `gpt-4o`”转向“保留原模型并标记为动态模型”；这会影响未知模型名的兼容性，应重点回归。
+- 普通模型必须精确存在于上游模型列表；未知模型不再使用本地映射或前缀回退。
 - `gizmo` 模型路径当前绕过模型可用性校验；如后续要增强校验，需要确认 GPTs 的真实上游约束。
 - `gateway/reverseProxy.py` 现在把通用异常统一映射为 502；需要确认上层调用链是否会因此触发新的重试分支。
 - `utils/retry.py` 现在只重试部分状态码；需要确认历史上依赖“所有 HTTPException 都重试”的调用场景是否存在行为变化。
@@ -180,7 +180,7 @@
 
 ## 下一步建议
 
-- 先做一轮 A + B 联合回归：验证模型选择、未登录访问、`gizmo`、未知模型名、`CHECK_MODEL=true`、`/v1/models` 返回结构。
+- 先做一轮 A + B 联合回归：验证远程精确模型选择、未登录访问、`gizmo`、未知模型名、12 小时缓存和 `/v1/models` 返回结构。
 - 再做一轮 C + D 联合回归：验证上游 502、超时、瞬时 500/503 时的反代错误码与重试次数是否符合预期。
 - 其余线路如需并行，优先避开上面 5 个已占用文件，先处理文档、部署或其他网关路由。
 - 如果后续要长期并行协作，建议新增 `handoff.md` 专门记录每条线的交接事项，本文件只保留高层事实。
