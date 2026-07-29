@@ -333,6 +333,14 @@ http {
             return 200 "ok\\n";
         }
 
+        location /cdn/ {
+            proxy_ssl_server_name on;
+            proxy_set_header Host cdn.oaistatic.com;
+            proxy_set_header Authorization "";
+            proxy_set_header Cookie "";
+            proxy_pass https://cdn.oaistatic.com/;
+        }
+
 """
 
 NGINX_ORCH_LOCATION = """\
