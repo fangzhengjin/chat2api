@@ -316,7 +316,7 @@ cmd_status() {
     for s in $(awk -F, 'NR>1 && $1!="" {print $1}' "$CSV"); do
         [ "$count" -ge 5 ] && break
         printf "  %-12s -> " "$s"
-        docker exec "c2a-${s}" curl -s --max-time 8 https://api.ipify.org 2>/dev/null \
+        docker exec "c2a-${s}" python -m utils.exit_ip 2>/dev/null \
             || echo "(unreachable)"
         echo
         count=$((count+1))

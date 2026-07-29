@@ -791,8 +791,7 @@ def get_exit_ip(slug: str, force: bool = False) -> str | None:
         if now - ts < EXIT_IP_TTL:
             return ip
     rc, out, _ = run(
-        ["docker", "exec", f"c2a-{slug}", "curl", "-s", "--max-time", "6",
-         "https://api.ipify.org"],
+        ["docker", "exec", f"c2a-{slug}", "python", "-m", "utils.exit_ip"],
         timeout=10,
     )
     ip = out.strip() if rc == 0 and out.strip() else None
