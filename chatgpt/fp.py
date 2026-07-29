@@ -146,6 +146,9 @@ def get_fp(req_token):
     fp = globals.fp_map.get(req_token, {})
     bound_proxy = get_bound_proxy(req_token)
     if fp and fp.get("user-agent") and fp.get("impersonate"):
+        normalized_ua, clamped = _clamp_ua_to_supported(fp["user-agent"])
+        if clamped:
+            fp["user-agent"] = normalized_ua
         if bound_proxy:
             fp["proxy_url"] = bound_proxy
             globals.fp_map[req_token] = fp
