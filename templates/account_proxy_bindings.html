@@ -433,6 +433,19 @@
                 const errorBlock = account.refresh_error
                     ? `<div class="rounded-2xl border border-red-100 bg-red-50 p-3 text-xs text-red-700">${escapeHtml(account.refresh_error)}</div>`
                     : `<div class="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-xs text-emerald-700">最近 1 小时暂无错误记录</div>`;
+                const chatPasswords = account.chat_passwords || [];
+                const chatPasswordRows = chatPasswords.length
+                    ? chatPasswords.map((item) => `
+                        <div class="rounded-xl border border-slate-200 bg-white p-3">
+                            <div class="break-words font-medium text-slate-800">${escapeHtml(item.note || '未填写备注')}</div>
+                            <div class="mt-1 text-xs text-slate-400">创建：${item.created_at ? new Date(item.created_at).toLocaleString('zh-CN') : '-'} · 会话：${item.conversation_count || 0}</div>
+                            <div class="mt-2 flex gap-2">
+                                <button class="reset-chat-password-button rounded-lg border border-blue-100 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700" data-password-id="${escapeHtml(item.id)}">重置</button>
+                                <button class="delete-chat-password-button rounded-lg border border-red-100 bg-red-50 px-2 py-1 text-xs font-semibold text-red-600" data-password-id="${escapeHtml(item.id)}">删除</button>
+                            </div>
+                        </div>
+                    `).join('')
+                    : '<div class="text-xs text-slate-400">尚未创建访问密码</div>';
                 accountDetailBody.innerHTML = `
                     <div class="flex items-start gap-3">
                         <div class="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-emerald-400 to-blue-500 text-lg font-black text-white">${escapeHtml(accountInitial(account))}</div>
@@ -468,8 +481,11 @@
                             <div class="mt-1 break-all font-mono text-xs text-slate-500 select-all">${escapeHtml(account.token)}</div>
                         </div>
                         <div class="rounded-2xl bg-slate-50 p-3">
-                            <div class="text-xs font-semibold text-slate-400">Chat 访问密码</div>
-                            <div class="mt-1 font-medium text-slate-800">${account.has_chat_password ? '已生成' : '未生成'}</div>
+                            <div class="mb-2 flex items-center justify-between">
+                                <div class="text-xs font-semibold text-slate-400">Chat 访问密码（${chatPasswords.length}）</div>
+                                <button class="create-chat-password-button rounded-lg bg-slate-950 px-2 py-1 text-xs font-semibold text-white" data-token="${escapeHtml(account.token)}">新增</button>
+                            </div>
+                            <div class="space-y-2">${chatPasswordRows}</div>
                         </div>
                         ${errorBlock}
                     </div>
@@ -477,7 +493,6 @@
                     <div class="mt-5 grid grid-cols-2 gap-2">
                         <button class="edit-account-button rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700" data-token="${escapeHtml(account.token)}">编辑</button>
                         ${account.can_refresh ? `<button class="refresh-account-button rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white" data-token="${escapeHtml(account.token)}">立即刷新</button>` : '<span></span>'}
-                        <button class="chat-password-button col-span-2 rounded-xl bg-slate-950 px-3 py-2 text-sm font-semibold text-white" data-token="${escapeHtml(account.token)}">${account.has_chat_password ? '重置 Chat 访问密码' : '生成 Chat 访问密码'}</button>
                         <button class="delete-account-button col-span-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm font-semibold text-red-600" data-token="${escapeHtml(account.token)}">删除账号</button>
                     </div>
                 `;
@@ -907,13 +922,14 @@
                 openAccountModal('edit', account || null);
             }
 
-            async function generateChatPassword(token) {
-                const account = accountsCache.find((item) => item.token === token);
-                if (account?.has_chat_password && !window.confirm('重置后旧密码会立即失效，确认继续吗？')) return;
+            async function createChatPassword(token) {
+                const note = window.prompt('请输入备注（例如使用人姓名）：', '');
+                if (note === null) return;
+                if (note.trim().length > 200) return window.alert('备注不能超过 200 个字符');
                 const response = await fetch(chatPasswordApi, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token }),
+                    body: JSON.stringify({ token, note: note.trim() }),
                 });
                 const result = await response.json();
                 if (!response.ok) {
@@ -923,6 +939,32 @@
                 window.prompt('访问密码仅展示本次，请立即复制：', result.password);
                 setStatus('Chat 访问密码已生成');
                 await loadDashboard();
+            }
+
+            async function resetChatPassword(passwordId) {
+                if (!window.confirm('重置后旧密码会立即失效，备注和会话保持不变，确认继续吗？')) return;
+                const response = await fetch(chatPasswordApi, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: passwordId }),
+                });
+                const result = await response.json();
+                if (!response.ok) return setStatus(result.detail || '访问密码重置失败');
+                window.prompt('新访问密码仅展示本次，请立即复制：', result.password);
+                setStatus('Chat 访问密码已重置');
+                await loadDashboard();
+            }
+
+            async function deleteChatPassword(passwordId) {
+                if (!window.confirm('删除后该密码及其独立会话记录会立即清除，确认继续吗？')) return;
+                const response = await fetch(chatPasswordApi, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: passwordId }),
+                });
+                const result = await response.json();
+                setStatus(response.ok ? result.message : (result.detail || '访问密码删除失败'));
+                if (response.ok) await loadDashboard();
             }
 
             accountsTable.addEventListener('click', async (event) => {
@@ -946,11 +988,15 @@
                 accountDetailPanel.addEventListener('click', async (event) => {
                     const editButton = event.target.closest('.edit-account-button');
                     const refreshButton = event.target.closest('.refresh-account-button');
-                    const chatPasswordButton = event.target.closest('.chat-password-button');
+                    const createChatPasswordButton = event.target.closest('.create-chat-password-button');
+                    const resetChatPasswordButton = event.target.closest('.reset-chat-password-button');
+                    const deleteChatPasswordButton = event.target.closest('.delete-chat-password-button');
                     const deleteButton = event.target.closest('.delete-account-button');
                     if (editButton) return editAccountToken(editButton.dataset.token);
                     if (refreshButton) return refreshAccountToken(refreshButton.dataset.token, refreshButton);
-                    if (chatPasswordButton) return generateChatPassword(chatPasswordButton.dataset.token);
+                    if (createChatPasswordButton) return createChatPassword(createChatPasswordButton.dataset.token);
+                    if (resetChatPasswordButton) return resetChatPassword(resetChatPasswordButton.dataset.passwordId);
+                    if (deleteChatPasswordButton) return deleteChatPassword(deleteChatPasswordButton.dataset.passwordId);
                     if (deleteButton) return deleteAccountToken(deleteButton.dataset.token);
                 });
             }

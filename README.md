@@ -231,10 +231,10 @@ chat2api migrate rollback ~/chat2api.backup-YYYYMMDD-HHMMSS
 
 `ENABLE_GATEWAY` 默认启用，可通过 `ENABLE_GATEWAY=false` 关闭：
 
-- 管理员在“账号实例 → 实例详情”中生成 Chat 访问密码，并绑定当前账号
+- 管理员在“账号实例 → 实例详情”中为当前账号生成多个 Chat 访问密码，并填写使用人备注
 - `/login` 验证访问密码后写入 `HttpOnly` Cookie，未验证不能访问 Chat 页面和后端接口
 - 访问密码由后台生成，用户输入的任意 SeedToken 不会自动创建账号映射
-- 不同访问密码的会话相互隔离；重置密码后旧密码立即失效
+- 不同访问密码的会话相互隔离；可单独重置或删除，其他密码不受影响
 - 支持 GPTs 商店、DeepResearch、Canvas
 - 多语言切换、敏感接口禁用
 
