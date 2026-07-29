@@ -49,7 +49,6 @@ class ChatService(AuthMixin, ModelMixin, FileMixin):
         self.s = None
         self.ss = None
         self.ws = None
-        self.dynamic_model = False
         self.antiban_ctx = None
         # 深度研究相关：system_hints 与请求体透传 / 模型名后缀双模式触发
         self.system_hints = []

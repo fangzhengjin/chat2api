@@ -1,3 +1,6 @@
+"""模型响应名称、请求解析和远程模型列表提取工具。"""
+
+
 model_proxy = {
     "gpt-3.5-turbo": "gpt-3.5-turbo-0125",
     "gpt-3.5-turbo-16k": "gpt-3.5-turbo-16k-0613",
@@ -39,74 +42,13 @@ model_system_fingerprint = {
     "gpt-4o-mini-2024-07-18": ["fp_c9aa9c0491"]
 }
 
-MODEL_REQUEST_RULES = (
-    ("o3-deep-research", "o3-deep-research"),
-    ("o4-mini-deep-research", "o4-mini-deep-research"),
-    ("gpt-4o-deep-research", "gpt-4o-deep-research"),
-    ("deep-research", "deep-research"),
-    ("o3-mini-high", "o3-mini-high"),
-    ("o3-mini-medium", "o3-mini-medium"),
-    ("o3-mini-low", "o3-mini-low"),
-    ("o3-mini", "o3-mini"),
-    ("o3", "o3"),
-    ("o1-preview", "o1-preview"),
-    ("o1-pro", "o1-pro"),
-    ("o1-mini", "o1-mini"),
-    ("o1", "o1"),
-    ("gpt-5-5", "gpt-5-5"),
-    ("gpt-5-pro", "gpt-5-pro"),
-    ("gpt-5-thinking", "gpt-5-thinking"),
-    ("gpt-5-mini", "gpt-5-mini"),
-    ("gpt-5", "gpt-5"),
-    ("gpt-4.5o", "gpt-4.5o"),
-    ("gpt-4o-canmore", "gpt-4o-canmore"),
-    ("gpt-4o-mini", "gpt-4o-mini"),
-    ("gpt-4o", "gpt-4o"),
-    ("gpt-4-mobile", "gpt-4-mobile"),
-    ("gpt-4", "gpt-4"),
-    ("gpt-3.5", "text-davinci-002-render-sha"),
-    ("auto", "auto"),
-)
-
-DEEP_RESEARCH_MODEL_ALIASES = (
-    "o3-deep-research",
-    "o4-mini-deep-research",
-    "gpt-4o-deep-research",
-    "deep-research",
-)
-
-
-def should_expose_deep_research_aliases(model_slugs):
-    paid_markers = (
-        "gpt-4",
-        "gpt-4o",
-        "gpt-5",
-        "o1",
-        "o3",
-        "o4",
-    )
-    return any(
-        isinstance(slug, str) and slug.startswith(paid_markers)
-        for slug in (model_slugs or [])
-    )
-
-
-def augment_model_slugs(model_slugs):
-    slugs = set(model_slugs or [])
-    if should_expose_deep_research_aliases(slugs):
-        slugs.update(DEEP_RESEARCH_MODEL_ALIASES)
-    return slugs
-
-
 def get_response_model(origin_model):
+    """返回兼容响应使用的模型名，参数为原始请求模型名。"""
     return model_proxy.get(origin_model, origin_model)
 
 
-def match_model_family(origin_model, alias):
-    return origin_model == alias or origin_model.startswith(f"{alias}-")
-
-
 def resolve_request_model(origin_model):
+    """解析请求模型与自定义 GPT ID，返回上游模型 slug 和 gizmo_id。"""
     origin_model = (origin_model or "gpt-5-5").strip()
     base_model = origin_model
     gizmo_id = None
@@ -118,14 +60,11 @@ def resolve_request_model(origin_model):
         gizmo_id = origin_model
         base_model = "gpt-5-5"
 
-    for alias, target in MODEL_REQUEST_RULES:
-        if match_model_family(base_model, alias):
-            return target, gizmo_id, False
-
-    return base_model, gizmo_id, True
+    return base_model, gizmo_id
 
 
 def extract_model_slugs(models_payload):
+    """从远程模型响应中提取 slug，参数为响应对象，返回 slug 集合。"""
     slugs = set()
     model_items = models_payload.get("models", [])
     if isinstance(model_items, dict):
