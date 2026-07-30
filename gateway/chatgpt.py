@@ -41,7 +41,9 @@ async def chatgpt_html(request: Request):
 
     clear_localstorage_script = """
     <script>
+        const chat2apiDefaultModel = localStorage.getItem("chat2api.defaultModel");
         localStorage.clear();
+        if (chat2apiDefaultModel) localStorage.setItem("chat2api.defaultModel", chat2apiDefaultModel);
     </script>
     """
 

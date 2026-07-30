@@ -43,6 +43,19 @@ CHATGPT_MODEL_DISPLAY_NAMES = {
     "gpt-5-6-thinking": "ChatGPT 5.6 Thinking",
 }
 
+CHATGPT_MODEL_DESCRIPTIONS = {
+    "gpt-5-3": "稳定可靠的通用模型",
+    "gpt-5-3-instant": "快速处理日常问题",
+    "gpt-5-3-mini": "轻量高效，响应更快",
+    "gpt-5-5": "更强的通用智能模型",
+    "gpt-5-5-instant": "快速回答，兼顾质量",
+    "gpt-5-5-mini": "轻量快速，适合简单任务",
+    "gpt-5-5-pro": "研究级智能模型",
+    "gpt-5-5-thinking": "深度思考复杂问题",
+    "gpt-5-6-pro": "更强的研究级智能模型",
+    "gpt-5-6-thinking": "更深入的复杂推理",
+}
+
 model_system_fingerprint = {
     "gpt-3.5-turbo-0125": ["fp_b28b39ffa8"],
     "gpt-3.5-turbo-1106": ["fp_592ef5907d"],
@@ -109,7 +122,7 @@ def filter_chatgpt_models_payload(models_payload):
         models_payload: 当前账号的上游 ``/backend-api/models`` 响应对象。
 
     Returns:
-        仅保留允许模型、按固定顺序排列并默认选择 ``gpt-5-5`` 的新响应对象。
+        仅保留允许模型、按固定顺序排列并默认选择 ``gpt-5-5-instant`` 的新响应对象。
     """
     model_items = models_payload.get("models")
     if not isinstance(model_items, (list, dict)):
@@ -148,11 +161,11 @@ def filter_chatgpt_models_payload(models_payload):
             "human_category_short_name": CHATGPT_MODEL_DISPLAY_NAMES[slug],
             "human_category_shorter_name": CHATGPT_MODEL_DISPLAY_NAMES[slug],
             "default_model": slug,
-            "short_explainer": slug,
+            "short_explainer": CHATGPT_MODEL_DESCRIPTIONS[slug],
             "title": CHATGPT_MODEL_DISPLAY_NAMES[slug],
         }
         for slug in reversed(ordered_slugs)
     ]
     filtered_payload["internal_groups"] = []
-    filtered_payload["default_model_slug"] = "gpt-5-5"
+    filtered_payload["default_model_slug"] = "gpt-5-5-instant"
     return filtered_payload
