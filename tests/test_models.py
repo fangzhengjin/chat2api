@@ -81,7 +81,7 @@ class ModelSelectionTests(unittest.IsolatedAsyncioTestCase):
             ["稳定可靠的通用模型", "更强的通用智能模型", "研究级智能模型", "更深入的复杂推理"],
         )
         self.assertEqual(filtered["internal_groups"], [])
-        self.assertEqual(filtered["default_model_slug"], "gpt-5-5-instant")
+        self.assertEqual(filtered["default_model_slug"], "gpt-5-5")
 
     async def test_exact_remote_model_is_cached_for_twelve_hours(self):
         """精确模型通过校验，且同一账号在缓存期内只查询一次。"""

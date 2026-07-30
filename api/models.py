@@ -122,7 +122,7 @@ def filter_chatgpt_models_payload(models_payload):
         models_payload: 当前账号的上游 ``/backend-api/models`` 响应对象。
 
     Returns:
-        仅保留允许模型、按固定顺序排列并默认选择 ``gpt-5-5-instant`` 的新响应对象。
+        仅保留允许模型、按固定顺序排列并默认选择 ``gpt-5-5`` 的新响应对象。
     """
     model_items = models_payload.get("models")
     if not isinstance(model_items, (list, dict)):
@@ -167,5 +167,5 @@ def filter_chatgpt_models_payload(models_payload):
         for slug in reversed(ordered_slugs)
     ]
     filtered_payload["internal_groups"] = []
-    filtered_payload["default_model_slug"] = "gpt-5-5-instant"
+    filtered_payload["default_model_slug"] = "gpt-5-5"
     return filtered_payload
