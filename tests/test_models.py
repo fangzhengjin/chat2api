@@ -44,28 +44,44 @@ class ModelSelectionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(resolve_request_model("g-example"), ("gpt-5-5", "g-example"))
 
     def test_chatgpt_models_are_filtered_named_and_ordered(self):
-        """网页端仅展示当前账号命中的白名单模型。"""
+        """网页端仅展示白名单模型，并生成对应菜单与默认模型。"""
         payload = {
             "models": [
                 {"slug": "gpt-5-6-thinking", "title": "Thinking"},
                 {"slug": "gpt-4o", "title": "GPT-4o"},
                 {"slug": "gpt-5-3", "title": "GPT-5.3"},
+                {"slug": "gpt-5-5", "title": "GPT-5.5"},
                 {"slug": "gpt-5-5-pro", "title": "Pro"},
             ],
-            "categories": ["unchanged"],
+            "categories": [{"category": "legacy"}],
+            "internal_groups": [{"group": "legacy"}],
+            "default_model_slug": "gpt-4o",
         }
 
         filtered = filter_chatgpt_models_payload(payload)
 
         self.assertEqual(
             [model["slug"] for model in filtered["models"]],
-            ["gpt-5-3", "gpt-5-5-pro", "gpt-5-6-thinking"],
+            ["gpt-5-3", "gpt-5-5", "gpt-5-5-pro", "gpt-5-6-thinking"],
         )
         self.assertEqual(
             [model["title"] for model in filtered["models"]],
-            ["ChatGPT 5.3", "ChatGPT 5.5 Pro", "ChatGPT 5.6 Thinking"],
+            ["ChatGPT 5.3", "ChatGPT 5.5", "ChatGPT 5.5 Pro", "ChatGPT 5.6 Thinking"],
         )
-        self.assertEqual(filtered["categories"], ["unchanged"])
+        self.assertEqual(
+            [category["default_model"] for category in reversed(filtered["categories"])],
+            ["gpt-5-3", "gpt-5-5", "gpt-5-5-pro", "gpt-5-6-thinking"],
+        )
+        self.assertEqual(
+            [category["human_category_name"] for category in reversed(filtered["categories"])],
+            ["ChatGPT 5.3", "ChatGPT 5.5", "ChatGPT 5.5 Pro", "ChatGPT 5.6 Thinking"],
+        )
+        self.assertEqual(
+            [category["short_explainer"] for category in reversed(filtered["categories"])],
+            ["gpt-5-3", "gpt-5-5", "gpt-5-5-pro", "gpt-5-6-thinking"],
+        )
+        self.assertEqual(filtered["internal_groups"], [])
+        self.assertEqual(filtered["default_model_slug"], "gpt-5-5")
 
     async def test_exact_remote_model_is_cached_for_twelve_hours(self):
         """精确模型通过校验，且同一账号在缓存期内只查询一次。"""

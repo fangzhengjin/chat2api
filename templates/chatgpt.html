@@ -15,26 +15,69 @@
                 };
             }
         </script>
-        <style>
-            nav[aria-label="Chat history"] a[title="ChatGPT"],
-            nav[aria-label="Chat history"] a[title="Sora"],
-            nav[aria-label="Chat history"] [data-testid="explore-gpts-button"],
-            nav[aria-label="Chat history"] div:has(> #snorlax-heading),
-            nav[aria-label="Chat history"] aside:has(> [aria-labelledby="snorlax-heading"]),
-            button[data-testid="share-chat-button"],
-            button[aria-label="Share"],
-            button[aria-label="共享"],
-            [role="menu"]:has([data-testid="logout-button"]) [role="menuitem"]:not([data-testid="logout-button"]):not(:has([data-testid="logout-button"])),
-            [role="menu"]:has([data-testid="logout-button"]) [role="separator"],
-            form[data-type="unified-composer"] [style*="--vt-composer-system-hint-action"],
-            form[data-type="unified-composer"] button[data-testid="composer-speech-button"],
-            form[data-type="unified-composer"] button[data-testid="voice-mode-button"],
-            form[data-type="unified-composer"] button[aria-label="Start voice mode"],
-            form[data-type="unified-composer"] button[aria-label="语音模式"],
-            form[data-type="unified-composer"] .absolute.bottom-1.right-3 button:has(svg path:nth-of-type(4)) {
-                display: none !important;
-            }
-        </style>
+        <script>
+            (() => {
+                const hide = element => element?.style.setProperty("display", "none", "important");
+                const text = element => element.textContent.replace(/\s+/g, " ").trim();
+                const hideActions = (root, labels) => {
+                    root.querySelectorAll('a, button, [role="button"], [role="menuitem"]').forEach(element => {
+                        if (labels.has(text(element)) || labels.has(element.getAttribute("aria-label"))) hide(element);
+                    });
+                };
+                const cleanInterface = () => {
+                    const sidebar = document.querySelector('nav[aria-label="Chat history"]');
+                    if (sidebar) {
+                        hideActions(sidebar, new Set([
+                            "ChatGPT", "Sora", "Explore GPTs", "探索 GPT",
+                            "New project", "新项目", "Projects", "项目",
+                        ]));
+                        sidebar.querySelectorAll('h1, h2, h3, [role="heading"]').forEach(element => {
+                            if (new Set(["Projects", "项目"]).has(text(element))) hide(element.parentElement || element);
+                        });
+                    }
+
+                    hideActions(document, new Set(["Share", "共享"]));
+
+                    document.querySelectorAll('[role="menu"]').forEach(menu => {
+                        const logout = [...menu.querySelectorAll('[role="menuitem"], a, button')]
+                            .find(element => ["Logout", "Log out", "注销"].includes(text(element)) || element.dataset.testid === "logout-button");
+                        if (!logout) return;
+                        menu.querySelectorAll('[role="menuitem"]').forEach(item => {
+                            if (!item.contains(logout) && !logout.contains(item)) hide(item);
+                        });
+                        menu.querySelectorAll('[role="separator"]').forEach(hide);
+                        hideActions(menu, new Set([
+                            "Tasks", "任务", "My GPTs", "我的 GPT", "我的 GPTs",
+                            "Customize ChatGPT", "自定义 ChatGPT", "Settings", "设置",
+                            "Get ChatGPT search extension", "获取 ChatGPT 搜索扩展程序",
+                        ]));
+                    });
+
+                    document.querySelectorAll('form[data-type="unified-composer"]').forEach(composer => {
+                        composer.querySelectorAll('[style*="--vt-composer-system-hint-action"]').forEach(hide);
+                        hideActions(composer, new Set([
+                            "More", "更多", "Use a tool", "使用工具",
+                            "Start voice mode", "Voice mode", "语音模式", "启动语音模式",
+                        ]));
+                        composer.querySelectorAll('[data-testid="composer-speech-button"], [data-testid="voice-mode-button"]').forEach(hide);
+                    });
+                };
+
+                // 官方 React 会在 hydration 和弹层打开时重建节点，因此每批 DOM 变化后统一清理一次。
+                let scheduled = false;
+                const scheduleCleanup = () => {
+                    if (scheduled) return;
+                    scheduled = true;
+                    requestAnimationFrame(() => {
+                        scheduled = false;
+                        cleanInterface();
+                    });
+                };
+                new MutationObserver(scheduleCleanup).observe(document.documentElement, { childList: true, subtree: true });
+                document.addEventListener("DOMContentLoaded", scheduleCleanup, { once: true });
+                scheduleCleanup();
+            })();
+        </script>
         <link rel="preload" as="image" href="/assets/sora-mutf8tav.webp"/>
         <link rel="preconnect" href=""/>
         <link rel="preconnect" href=""/>

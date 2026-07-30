@@ -103,13 +103,13 @@ def extract_model_slugs(models_payload):
 
 
 def filter_chatgpt_models_payload(models_payload):
-    """过滤网页端模型列表并覆盖展示名称。
+    """过滤网页端模型列表并重建选择菜单。
 
     Args:
         models_payload: 当前账号的上游 ``/backend-api/models`` 响应对象。
 
     Returns:
-        仅保留允许模型、按固定顺序排列的新响应对象。
+        仅保留允许模型、按固定顺序排列并默认选择 ``gpt-5-5`` 的新响应对象。
     """
     model_items = models_payload.get("models")
     if not isinstance(model_items, (list, dict)):
@@ -140,4 +140,19 @@ def filter_chatgpt_models_payload(models_payload):
         filtered_payload["models"] = {selected[slug][0]: selected[slug][1] for slug in ordered_slugs}
     else:
         filtered_payload["models"] = [selected[slug][1] for slug in ordered_slugs]
+    # 官方前端按 categories 构造一级菜单，并在渲染前反转数组。
+    filtered_payload["categories"] = [
+        {
+            "category": slug,
+            "human_category_name": CHATGPT_MODEL_DISPLAY_NAMES[slug],
+            "human_category_short_name": CHATGPT_MODEL_DISPLAY_NAMES[slug],
+            "human_category_shorter_name": CHATGPT_MODEL_DISPLAY_NAMES[slug],
+            "default_model": slug,
+            "short_explainer": slug,
+            "title": CHATGPT_MODEL_DISPLAY_NAMES[slug],
+        }
+        for slug in reversed(ordered_slugs)
+    ]
+    filtered_payload["internal_groups"] = []
+    filtered_payload["default_model_slug"] = "gpt-5-5"
     return filtered_payload

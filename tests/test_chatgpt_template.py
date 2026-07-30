@@ -10,25 +10,18 @@ class ChatgptTemplateTests(unittest.TestCase):
         self.assertLess(polyfill, first_module)
         self.assertIn("crypto.getRandomValues", template[polyfill:first_module])
 
-    def test_sidebar_shortcuts_and_projects_are_hidden(self):
+    def test_dynamic_interface_cleanup_loads_before_official_modules(self):
+        """动态清理必须先于官方模块运行，并覆盖要求移除的入口。"""
         template = Path("templates/chatgpt.html").read_text(encoding="utf-8")
-        sidebar_styles = template[template.index("<style>"):template.index("</style>")]
-        for selector in ('a[title="ChatGPT"]', 'a[title="Sora"]', 'explore-gpts-button', 'snorlax-heading'):
-            self.assertIn(selector, sidebar_styles)
-
-    def test_share_and_non_logout_account_actions_are_hidden(self):
-        template = Path("templates/chatgpt.html").read_text(encoding="utf-8")
-        styles = template[template.index("<style>"):template.index("</style>")]
-        self.assertIn('data-testid="share-chat-button"', styles)
-        self.assertIn('data-testid="logout-button"', styles)
-        self.assertIn('[role="menuitem"]:not(', styles)
-
-    def test_more_tools_and_voice_mode_are_hidden(self):
-        template = Path("templates/chatgpt.html").read_text(encoding="utf-8")
-        styles = template[template.index("<style>"):template.index("</style>")]
-        self.assertIn("--vt-composer-system-hint-action", styles)
-        self.assertIn('data-testid="composer-speech-button"', styles)
-        self.assertNotIn('data-testid="send-button"', styles)
+        cleanup = template.index("const cleanInterface")
+        first_module = template.index('type="module"')
+        self.assertLess(cleanup, first_module)
+        for marker in (
+            "MutationObserver", "Explore GPTs", "New project", "Logout",
+            "Customize ChatGPT", "Share", "Use a tool", "Voice mode",
+        ):
+            self.assertIn(marker, template[cleanup:first_module])
+        self.assertNotIn('data-testid="send-button"', template[cleanup:first_module])
 
 
 if __name__ == "__main__":
